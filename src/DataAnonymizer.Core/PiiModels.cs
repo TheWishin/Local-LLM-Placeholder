@@ -1,12 +1,21 @@
 namespace DataAnonymizer.Services;
 
+/// <summary>Unterstützte Sprachen für Oberfläche und Platzhalter-Beschriftungen.</summary>
+public enum AppLanguage
+{
+    De,
+    En,
+    Fr,
+    It
+}
+
 /// <summary>Kategorien von personenbezogenen Daten, die erkannt werden.</summary>
 public enum PiiCategory
 {
     Begriff,      // Eigene Begriffe (Firmen, Projektnamen, ...)
     Email,
     Iban,
-    Ahv,          // Schweizer AHV-Nummer (756.xxxx.xxxx.xx)
+    Ahv,          // Sozialversicherungsnummern (CH AHV 756.xxxx.xxxx.xx, US SSN)
     Kreditkarte,
     Referenz,     // Kunden-/Policen-/Fall-/Dossier-Nummern
     Telefon,
@@ -14,11 +23,15 @@ public enum PiiCategory
     Adresse,      // Strasse + Hausnummer
     Ort,          // PLZ + Ortschaft
     Kennzeichen,  // Autokennzeichen (CH-Kantone)
-    Name
+    Name,
+    Organisation  // Firmen und Organisationen (wird nur vom lokalen LLM erkannt)
 }
 
 /// <summary>Eine Zuordnung Platzhalter → Originalwert.</summary>
 public sealed record MappingEntry(string Placeholder, string Original, PiiCategory Category);
+
+/// <summary>Ein vom lokalen LLM gefundener Textabschnitt mit persönlichen Daten.</summary>
+public sealed record LlmEntity(string Text, PiiCategory Category);
 
 /// <summary>Ergebnis einer Anonymisierung.</summary>
 public sealed class AnonymizationResult
@@ -43,10 +56,15 @@ public sealed class AnonymizerOptions
     public bool Kreditkarten { get; set; } = true;
     public bool Referenzen { get; set; } = true;
     public bool Kennzeichen { get; set; } = true;
-    /// <summary>Geburtsdaten mit Kontext ("geb.", "geboren am", "Geburtsdatum:").</summary>
+    /// <summary>Firmen/Organisationen (werden nur vom lokalen LLM gefunden).</summary>
+    public bool Organisationen { get; set; } = true;
+    /// <summary>Geburtsdaten mit Kontext ("geb.", "born on", "né le", "nato il").</summary>
     public bool Geburtsdaten { get; set; } = true;
     /// <summary>Alle Datumsangaben ersetzen (kann den Fall-Zeitablauf unlesbar machen).</summary>
     public bool AlleDaten { get; set; } = false;
+
+    /// <summary>Sprache der erzeugten Platzhalter, z.B. [TELEFON_1] (De) vs. [PHONE_1] (En).</summary>
+    public AppLanguage Language { get; set; } = AppLanguage.De;
 
     public List<CustomTerm> EigeneBegriffe { get; set; } = new();
 }
