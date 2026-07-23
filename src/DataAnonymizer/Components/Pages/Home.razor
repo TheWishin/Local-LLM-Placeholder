@@ -1,0 +1,200 @@
+@page "/"
+@rendermode InteractiveServer
+@using DataAnonymizer.Services
+@inject AnonymizerService Anonymizer
+@inject IJSRuntime JS
+
+<PageTitle>Daten-Anonymisierer</PageTitle>
+
+<h1 class="mb-1">🔒 Daten-Anonymisierer</h1>
+<p class="text-muted mb-4">
+    Ersetzt persönliche Daten (Namen, E-Mails, Telefonnummern, IBAN, AHV-Nr., Adressen, …) durch Platzhalter,
+    bevor du einen Fall in Claude Code oder ein anderes KI-Tool einfügst.
+    <strong>Alles läuft lokal</strong> – es werden keine Daten übertragen oder gespeichert.
+</p>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header fw-bold">1️⃣ Originaltext mit persönlichen Daten</div>
+            <div class="card-body">
+                <textarea class="form-control font-monospace" rows="10"
+                          placeholder="Falltext hier einfügen, z.B.:&#10;Herr Max Muster (geb. 12.03.1985), Bahnhofstrasse 12, 8001 Zürich, Tel. +41 79 123 45 67, max.muster@example.ch, meldet einen Schaden. Policen-Nr. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7."
+                          @bind="_inputText"></textarea>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-primary" @onclick="RunAnonymize">🔒 Anonymisieren</button>
+                    <button class="btn btn-outline-secondary" @onclick="ClearAll">Leeren</button>
+                </div>
+            </div>
+        </div>
+
+        @if (_result is not null)
+        {
+            <div class="card shadow-sm mt-4">
+                <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                    <span>2️⃣ Anonymisierter Text – sicher für Claude Code</span>
+                    <button class="btn btn-sm btn-success" @onclick='() => CopyToClipboard(_result.AnonymizedText, "output")'>
+                        @(_copied == "output" ? "✔ Kopiert" : "📋 Kopieren")
+                    </button>
+                </div>
+                <div class="card-body">
+                    <textarea class="form-control font-monospace bg-light" rows="10" readonly>@_result.AnonymizedText</textarea>
+
+                    @if (_result.Mappings.Count > 0)
+                    {
+                        <h6 class="mt-4">Zuordnungstabelle (@_result.Mappings.Count Werte ersetzt)</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Platzhalter</th>
+                                        <th>Originalwert</th>
+                                        <th>Kategorie</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var m in _result.Mappings)
+                                    {
+                                        <tr>
+                                            <td><code>@m.Placeholder</code></td>
+                                            <td>@m.Original</td>
+                                            <td><span class="badge text-bg-secondary">@AnonymizerService.LabelFor(m.Category)</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Die Tabelle bleibt nur in dieser Browser-Sitzung im Speicher und wird nirgends abgelegt.
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="text-muted mt-3 mb-0">Keine persönlichen Daten gefunden.</p>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header fw-bold">3️⃣ Antwort de-anonymisieren (Platzhalter zurückersetzen)</div>
+                <div class="card-body">
+                    <p class="text-muted small">
+                        Antwort von Claude Code hier einfügen – die Platzhalter werden wieder durch die Originalwerte ersetzt.
+                    </p>
+                    <textarea class="form-control font-monospace" rows="8"
+                              placeholder="Antwort mit Platzhaltern wie [NAME_1] hier einfügen …"
+                              @bind="_responseText"></textarea>
+                    <button class="btn btn-primary mt-3" @onclick="RunDeanonymize">🔓 Platzhalter zurückersetzen</button>
+
+                    @if (_deanonymized is not null)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                            <h6 class="mb-0">Wiederhergestellter Text</h6>
+                            <button class="btn btn-sm btn-success" @onclick='() => CopyToClipboard(_deanonymized, "restored")'>
+                                @(_copied == "restored" ? "✔ Kopiert" : "📋 Kopieren")
+                            </button>
+                        </div>
+                        <textarea class="form-control font-monospace bg-light" rows="8" readonly>@_deanonymized</textarea>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header fw-bold">⚙️ Erkennungsregeln</div>
+            <div class="card-body">
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optNamen" @bind="_options.Namen" /><label class="form-check-label" for="optNamen">Namen (nach Herr/Frau, „Name:“, …)</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optEmails" @bind="_options.Emails" /><label class="form-check-label" for="optEmails">E-Mail-Adressen</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optTel" @bind="_options.Telefonnummern" /><label class="form-check-label" for="optTel">Telefonnummern</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optAdr" @bind="_options.Adressen" /><label class="form-check-label" for="optAdr">Strassen &amp; Hausnummern</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optOrt" @bind="_options.Orte" /><label class="form-check-label" for="optOrt">PLZ &amp; Ortschaften</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optIban" @bind="_options.Iban" /><label class="form-check-label" for="optIban">IBAN</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optAhv" @bind="_options.Ahv" /><label class="form-check-label" for="optAhv">AHV-Nummern (756.…)</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optKarte" @bind="_options.Kreditkarten" /><label class="form-check-label" for="optKarte">Kreditkartennummern</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optRef" @bind="_options.Referenzen" /><label class="form-check-label" for="optRef">Kunden-/Policen-/Fall-Nummern</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optKz" @bind="_options.Kennzeichen" /><label class="form-check-label" for="optKz">Autokennzeichen (CH)</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optGeb" @bind="_options.Geburtsdaten" /><label class="form-check-label" for="optGeb">Geburtsdaten („geb.“, „geboren am“)</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optDaten" @bind="_options.AlleDaten" /><label class="form-check-label" for="optDaten">Alle Datumsangaben</label></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-header fw-bold">📝 Eigene Begriffe</div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Ein Begriff pro Zeile (z.B. Firmennamen, Projektnamen oder Namen ohne Anrede).
+                    Diese werden immer ersetzt und lokal im Browser gespeichert.
+                </p>
+                <textarea class="form-control font-monospace" rows="6"
+                          placeholder="Muster AG&#10;Anna Beispiel&#10;Projekt Phoenix"
+                          @bind="_customTermsText" @bind:after="SaveCustomTerms"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _inputText = string.Empty;
+    private string _responseText = string.Empty;
+    private string _customTermsText = string.Empty;
+    private string? _deanonymized;
+    private string? _copied;
+    private AnonymizationResult? _result;
+    private readonly AnonymizerOptions _options = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var saved = await JS.InvokeAsync<string?>("appStorage.get", "customTerms");
+            if (!string.IsNullOrEmpty(saved))
+            {
+                _customTermsText = saved;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void RunAnonymize()
+    {
+        _options.EigeneBegriffe = _customTermsText
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => new CustomTerm(t))
+            .ToList();
+
+        _result = Anonymizer.Anonymize(_inputText, _options);
+        _deanonymized = null;
+        _copied = null;
+    }
+
+    private void RunDeanonymize()
+    {
+        if (_result is not null)
+        {
+            _deanonymized = Anonymizer.Deanonymize(_responseText, _result.Mappings);
+            _copied = null;
+        }
+    }
+
+    private void ClearAll()
+    {
+        _inputText = string.Empty;
+        _responseText = string.Empty;
+        _result = null;
+        _deanonymized = null;
+        _copied = null;
+    }
+
+    private async Task SaveCustomTerms()
+    {
+        await JS.InvokeVoidAsync("appStorage.set", "customTerms", _customTermsText);
+    }
+
+    private async Task CopyToClipboard(string text, string which)
+    {
+        await JS.InvokeVoidAsync("appClipboard.copy", text);
+        _copied = which;
+    }
+}

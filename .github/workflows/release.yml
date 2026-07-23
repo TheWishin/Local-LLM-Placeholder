@@ -1,0 +1,36 @@
+name: Release
+
+# Erstellt bei einem Tag wie v1.0.0 fertige Pakete für Windows, Linux und macOS.
+# Die Empfänger brauchen kein .NET – einfach entpacken und starten.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test
+        run: dotnet run --project tests/DataAnonymizer.Tests -c Release
+
+      - name: Publish (alle Plattformen)
+        run: |
+          for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
+            dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
+            (cd publish && zip -qr "../DataAnonymizer-${GITHUB_REF_NAME}-$rid.zip" "$rid")
+          done
+
+      - name: GitHub-Release erstellen
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DataAnonymizer-*.zip
+          generate_release_notes: true
