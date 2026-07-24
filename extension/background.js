@@ -8,18 +8,25 @@ import { anonymize, deanonymize, defaultOptions } from './engine.js';
 const MENU_ANON = 'anonymizer-anonymize';
 const MENU_DEANON = 'anonymizer-deanonymize';
 
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: MENU_ANON,
-        title: chrome.i18n.getMessage('ctxAnonymize') || 'Anonymize selection (copy)',
-        contexts: ['selection']
+// Menüs bei Installation UND bei jedem Browserstart neu aufbauen. removeAll()
+// verhindert den Fehler "duplicate id" beim Aktualisieren der Erweiterung.
+function createMenus() {
+    chrome.contextMenus.removeAll(() => {
+        chrome.contextMenus.create({
+            id: MENU_ANON,
+            title: chrome.i18n.getMessage('ctxAnonymize') || 'Anonymize selection (copy)',
+            contexts: ['selection']
+        });
+        chrome.contextMenus.create({
+            id: MENU_DEANON,
+            title: chrome.i18n.getMessage('ctxDeanonymize') || 'Restore selection (copy)',
+            contexts: ['selection']
+        });
     });
-    chrome.contextMenus.create({
-        id: MENU_DEANON,
-        title: chrome.i18n.getMessage('ctxDeanonymize') || 'Restore selection (copy)',
-        contexts: ['selection']
-    });
-});
+}
+
+chrome.runtime.onInstalled.addListener(createMenus);
+chrome.runtime.onStartup.addListener(createMenus);
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
     const text = info.selectionText ?? '';

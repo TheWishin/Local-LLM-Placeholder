@@ -377,7 +377,10 @@ async function ensureLlm({ allowPull = true } = {}) {
     }
 
     if (!allowPull) {
-        state.llmStatus = 'offline';
+        // Ollama läuft, aber kein Modell installiert. Im Popup NICHT herunterladen
+        // (der Download würde beim Schliessen des Popups abbrechen) – stattdessen
+        // den manuellen Hinweis zeigen. Die Desktop-App lädt das Modell zuverlässig.
+        state.llmStatus = 'pullfailed';
         renderLlm();
         return;
     }
@@ -422,8 +425,9 @@ async function runAnonymize() {
     };
 
     // Falls Ollama inzwischen gestartet wurde, ohne Neuöffnen erkennen.
+    // Kein Modell-Download hier – Anonymisieren soll immer sofort laufen.
     if (state.llmEnabled && state.llmStatus === 'offline') {
-        await ensureLlm();
+        await ensureLlm({ allowPull: false });
     }
 
     let llmFindings = null;
@@ -522,7 +526,7 @@ async function main() {
         state.llmEnabled = $('llmEnabled').checked;
         saveLocal();
         if (state.llmEnabled) {
-            ensureLlm();
+            ensureLlm({ allowPull: false });
         } else {
             renderLlm();
         }
@@ -532,7 +536,7 @@ async function main() {
         saveLocal();
         ollama.warmUp(state.llmModel);
     });
-    $('llmRecheck').addEventListener('click', () => ensureLlm());
+    $('llmRecheck').addEventListener('click', () => ensureLlm({ allowPull: false }));
 
     $('exportMappingBtn').addEventListener('click', () => {
         if (state.mappings.length === 0) {
@@ -606,7 +610,7 @@ async function main() {
 
     renderTexts();
     if (state.llmEnabled) {
-        ensureLlm();
+        ensureLlm({ allowPull: false });
     }
 }
 

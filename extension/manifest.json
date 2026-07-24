@@ -3,7 +3,7 @@
     "name": "__MSG_extName__",
     "description": "__MSG_extDescription__",
     "default_locale": "en",
-    "version": "1.5.0",
+    "version": "1.5.1",
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
@@ -23,7 +23,7 @@
         "service_worker": "background.js",
         "type": "module"
     },
-    "permissions": ["storage", "clipboardWrite", "contextMenus", "notifications", "offscreen"],
+    "permissions": ["storage", "clipboardWrite", "clipboardRead", "contextMenus", "notifications", "offscreen"],
     "host_permissions": [
         "http://localhost:11434/*",
         "http://127.0.0.1:11434/*"

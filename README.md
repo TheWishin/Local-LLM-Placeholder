@@ -52,6 +52,19 @@ The app opens with a short **"How it works"** strip (1 Anonymize → 2 Use in yo
 AI tool → 3 Translate back). Everything runs 100% locally; the optional AI
 (Ollama) does too.
 
+> **After updating the unpacked extension, click the ↻ reload icon on the
+> extension card in `chrome://extensions`** – Chrome does not auto-update
+> unpacked extensions. Then close and reopen the popup.
+>
+> **Troubleshooting:**
+> - *Anonymize works but AI shows "not reachable":* install & start
+>   [Ollama](https://ollama.com), then click **↻ Check again**. The extension
+>   does not download the model itself (a popup can't hold a multi-GB download);
+>   run `ollama pull llama3.2` once, or use the desktop app which downloads it
+>   for you. Pattern detection always works without the AI.
+> - *Paste button does nothing:* allow clipboard access when Chrome asks (the
+>   extension needs `clipboardRead` for the Paste button – v1.5.1+).
+
 **Right-click anywhere:** select text on any web page (e.g. in a ChatGPT or
 Claude input box), right-click, and choose **"🔒 Anonymize selection (copy)"** –
 the anonymized text is put on your clipboard, ready to paste back. Later,
