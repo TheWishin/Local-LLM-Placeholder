@@ -2,13 +2,13 @@
 // src/DataAnonymizer.Core/AnonymizerService.cs. Bei Änderungen beide Seiten
 // synchron halten. Läuft vollständig lokal im Browser.
 
-export const CATEGORIES = ['term', 'email', 'iban', 'ssn', 'card', 'ref', 'phone', 'date', 'address', 'city', 'plate', 'name', 'org'];
+export const CATEGORIES = ['term', 'email', 'iban', 'ssn', 'card', 'ref', 'phone', 'date', 'address', 'city', 'plate', 'name', 'org', 'ip', 'sensitive'];
 
 const LABELS = {
-    de: { term: 'BEGRIFF', email: 'EMAIL', iban: 'IBAN', ssn: 'AHV', card: 'KARTE', ref: 'REFERENZ', phone: 'TELEFON', date: 'DATUM', address: 'ADRESSE', city: 'ORT', plate: 'KENNZEICHEN', name: 'NAME', org: 'FIRMA' },
-    en: { term: 'TERM', email: 'EMAIL', iban: 'IBAN', ssn: 'SSN', card: 'CARD', ref: 'REFERENCE', phone: 'PHONE', date: 'DATE', address: 'ADDRESS', city: 'CITY', plate: 'PLATE', name: 'NAME', org: 'COMPANY' },
-    fr: { term: 'TERME', email: 'EMAIL', iban: 'IBAN', ssn: 'AVS', card: 'CARTE', ref: 'REFERENCE', phone: 'TELEPHONE', date: 'DATE', address: 'ADRESSE', city: 'LIEU', plate: 'PLAQUE', name: 'NOM', org: 'SOCIETE' },
-    it: { term: 'TERMINE', email: 'EMAIL', iban: 'IBAN', ssn: 'AVS', card: 'CARTA', ref: 'RIFERIMENTO', phone: 'TELEFONO', date: 'DATA', address: 'INDIRIZZO', city: 'LUOGO', plate: 'TARGA', name: 'NOME', org: 'DITTA' }
+    de: { term: 'BEGRIFF', email: 'EMAIL', iban: 'IBAN', ssn: 'AHV', card: 'KARTE', ref: 'REFERENZ', phone: 'TELEFON', date: 'DATUM', address: 'ADRESSE', city: 'ORT', plate: 'KENNZEICHEN', name: 'NAME', org: 'FIRMA', ip: 'IP', sensitive: 'SENSIBEL' },
+    en: { term: 'TERM', email: 'EMAIL', iban: 'IBAN', ssn: 'SSN', card: 'CARD', ref: 'REFERENCE', phone: 'PHONE', date: 'DATE', address: 'ADDRESS', city: 'CITY', plate: 'PLATE', name: 'NAME', org: 'COMPANY', ip: 'IP', sensitive: 'SENSITIVE' },
+    fr: { term: 'TERME', email: 'EMAIL', iban: 'IBAN', ssn: 'AVS', card: 'CARTE', ref: 'REFERENCE', phone: 'TELEPHONE', date: 'DATE', address: 'ADRESSE', city: 'LIEU', plate: 'PLAQUE', name: 'NOM', org: 'SOCIETE', ip: 'IP', sensitive: 'SENSIBLE' },
+    it: { term: 'TERMINE', email: 'EMAIL', iban: 'IBAN', ssn: 'AVS', card: 'CARTA', ref: 'RIFERIMENTO', phone: 'TELEFONO', date: 'DATA', address: 'INDIRIZZO', city: 'LUOGO', plate: 'TARGA', name: 'NOME', org: 'DITTA', ip: 'IP', sensitive: 'SENSIBILE' }
 };
 
 export function labelFor(category, language) {
@@ -20,6 +20,7 @@ export function defaultOptions() {
         language: 'de',
         names: true, emails: true, phones: true, streets: true, cities: true,
         iban: true, ssn: true, cards: true, refs: true, plates: true, orgs: true,
+        ip: true, sensitive: true,
         birthdays: true, allDates: false,
         customTerms: [],
         // Werte, die nie ersetzt werden, obwohl die Erkennung sie findet
@@ -40,6 +41,15 @@ const IBAN_RX = /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b/g;
 
 // Schweizer AHV-Nummer (756.1234.5678.97) und US Social Security Number (123-45-6789)
 const SSN_RX = /\b756[.\s]?\d{4}[.\s]?\d{4}[.\s]?\d{2}\b|\b\d{3}-\d{2}-\d{4}\b/g;
+
+// Schweizer Versichertenkarte (Krankenkasse): 20-stellige Nummer, beginnt mit 807.
+const HEALTH_CARD_RX = /(?<!\d)807\d{17}(?!\d)/g;
+
+// Schweizer Unternehmens-Identifikationsnummer (UID): CHE-123.456.789
+const UID_RX = /\bCHE-\d{3}\.\d{3}\.\d{3}(?:\s?(?:MWST|TVA|IVA|VAT))?\b/g;
+
+// IP-Adressen: IPv4 (0-255) und einfache IPv6.
+const IP_RX = /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b|\b(?:[A-Fa-f0-9]{1,4}:){2,7}[A-Fa-f0-9]{1,4}\b/g;
 
 // Kandidaten für Kreditkarten (13–19 Ziffern), werden zusätzlich per Luhn geprüft.
 const CARD_RX = /(?<!\d)\d(?:[ \-]?\d){12,18}(?!\d)/g;
@@ -262,6 +272,12 @@ function collect(text, options, llmFindings) {
     priority++;
     if (options.ssn) {
         addMatches(result, text, SSN_RX, 'ssn', priority);
+        addMatches(result, text, HEALTH_CARD_RX, 'ssn', priority);
+    }
+
+    priority++;
+    if (options.ip) {
+        addMatches(result, text, IP_RX, 'ip', priority);
     }
 
     priority++;
@@ -275,6 +291,7 @@ function collect(text, options, llmFindings) {
 
     priority++;
     if (options.refs) {
+        addMatches(result, text, UID_RX, 'ref', priority);
         for (const m of text.matchAll(REFERENCE_RX)) {
             const g = m.groups?.ref;
             if (!g) {
@@ -390,6 +407,8 @@ const LLM_CATEGORY_ENABLED = {
     ref: o => o.refs,
     plate: o => o.plates,
     org: o => o.orgs,
+    ip: o => o.ip,
+    sensitive: o => o.sensitive,
     date: o => o.birthdays || o.allDates
 };
 

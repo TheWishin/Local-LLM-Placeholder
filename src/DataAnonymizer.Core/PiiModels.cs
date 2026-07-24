@@ -24,7 +24,10 @@ public enum PiiCategory
     Ort,          // PLZ + Ortschaft
     Kennzeichen,  // Autokennzeichen (CH-Kantone)
     Name,
-    Organisation  // Firmen und Organisationen (wird nur vom lokalen LLM erkannt)
+    Organisation, // Firmen und Organisationen (wird nur vom lokalen LLM erkannt)
+    Ip,           // IP-Adressen (IPv4/IPv6) – Personendaten nach DSG
+    Sensitiv      // Besonders schützenswerte Personendaten nach revDSG (Gesundheit,
+                  // Religion, politische Ansichten, Gewerkschaft, Biometrie, Strafverfahren …)
 }
 
 /// <summary>Eine Zuordnung Platzhalter → Originalwert.</summary>
@@ -52,6 +55,8 @@ public static class PiiCategoryIds
         PiiCategory.Kennzeichen => "plate",
         PiiCategory.Name => "name",
         PiiCategory.Organisation => "org",
+        PiiCategory.Ip => "ip",
+        PiiCategory.Sensitiv => "sensitive",
         _ => "term"
     };
 
@@ -69,6 +74,8 @@ public static class PiiCategoryIds
         "plate" => PiiCategory.Kennzeichen,
         "name" => PiiCategory.Name,
         "org" => PiiCategory.Organisation,
+        "ip" => PiiCategory.Ip,
+        "sensitive" => PiiCategory.Sensitiv,
         _ => PiiCategory.Begriff
     };
 }
@@ -101,6 +108,10 @@ public sealed class AnonymizerOptions
     public bool Kennzeichen { get; set; } = true;
     /// <summary>Firmen/Organisationen (werden nur vom lokalen LLM gefunden).</summary>
     public bool Organisationen { get; set; } = true;
+    /// <summary>IP-Adressen (IPv4/IPv6).</summary>
+    public bool IpAdressen { get; set; } = true;
+    /// <summary>Besonders schützenswerte Daten nach revDSG (nur vom lokalen LLM gefunden).</summary>
+    public bool SensitiveDaten { get; set; } = true;
     /// <summary>Geburtsdaten mit Kontext ("geb.", "born on", "né le", "nato il").</summary>
     public bool Geburtsdaten { get; set; } = true;
     /// <summary>Alle Datumsangaben ersetzen (kann den Fall-Zeitablauf unlesbar machen).</summary>

@@ -88,6 +88,7 @@ const OPTION_KEYS = [
     ['streets', 'optStreets'], ['cities', 'optCities'], ['iban', 'optIban'],
     ['ssn', 'optSsn'], ['cards', 'optCards'], ['refs', 'optRefs'],
     ['plates', 'optPlates'], ['orgs', 'optOrgs'],
+    ['ip', 'optIp'], ['sensitive', 'optSensitive'],
     ['birthdays', 'optBirthdays'], ['allDates', 'optAllDates']
 ];
 
@@ -122,6 +123,7 @@ function renderTexts() {
     $('llmRecheck').textContent = s.btnRecheck;
     $('llmErrorNote').textContent = s.llmError;
     $('footerNote').textContent = s.footer;
+    $('dsgNote').textContent = s.dsgNote;
 
     const grid = $('optionsGrid');
     grid.innerHTML = '';

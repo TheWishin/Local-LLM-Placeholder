@@ -1,0 +1,24 @@
+========================================================
+  Data Anonymizer  -  START HERE (Linux)
+========================================================
+
+The easy way (recommended)
+--------------------------
+1. Open a terminal in this folder.
+2. Run:  ./Install-Linux.sh
+   The first time, it installs the local AI (Ollama) and downloads a
+   small model automatically. This can take a few minutes.
+3. Your browser opens at http://localhost:5100. That's the app.
+4. To stop: press Ctrl+C.
+
+If the script is not executable:  chmod +x Install-Linux.sh DataAnonymizer
+
+Only want to run the app (skip the AI)?
+---------------------------------------
+Run:  ./DataAnonymizer
+Pattern detection works; the optional AI needs Ollama (ollama.com).
+
+Is it private?
+--------------
+Yes. Everything runs on this computer. No text is ever sent to the
+internet. The optional AI (Ollama) also runs fully locally.

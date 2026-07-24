@@ -22,7 +22,16 @@ Allowed categories:
 - "address": street names with house numbers
 - "location": postal codes with towns or cities that reveal where someone lives
 - "id": customer, policy, case, insurance, social security or account numbers, IBANs, credit card numbers, license plates
+- "ip": IP addresses (IPv4 or IPv6)
 - "birthdate": dates of birth
+- "sensitive": special-category personal data under the Swiss revised Data
+  Protection Act (revDSG) and the EU GDPR: health / medical conditions,
+  diagnoses, disabilities; religious or philosophical beliefs; political
+  opinions; trade-union membership; racial or ethnic origin; genetic or
+  biometric data; sex life or sexual orientation; and data about social
+  assistance or administrative/criminal proceedings and sanctions. Report the
+  specific revealing phrase (e.g. "Diagnose: Depression", "katholisch"), not
+  the whole sentence.
 - "other": anything else that could identify a specific person
 
 Rules:
@@ -30,6 +39,8 @@ Rules:
 - List each distinct value once, even if it appears several times.
 - Do NOT report: generic words, job titles alone, country names, amounts of
   money, dates that are not birth dates, or placeholders like [NAME_1].
+- Pay special attention to "sensitive" data - under the revDSG it needs the
+  strongest protection, so never miss health, religion or similar details.
 - If there is no PII, respond with {"entities":[]}.`;
 
 // Kategorien des Modells → Kategorien der Engine (engine.js).
@@ -45,7 +56,11 @@ const CATEGORY_MAP = {
     birthdate: 'date', date: 'date', dob: 'date',
     plate: 'plate', license_plate: 'plate',
     card: 'card', credit_card: 'card',
-    ssn: 'ssn', social_security: 'ssn'
+    ssn: 'ssn', social_security: 'ssn',
+    ip: 'ip', ip_address: 'ip',
+    sensitive: 'sensitive', health: 'sensitive', religion: 'sensitive',
+    political: 'sensitive', union: 'sensitive', biometric: 'sensitive',
+    genetic: 'sensitive', sexuality: 'sensitive', criminal: 'sensitive'
 };
 
 /** Erreichbarkeit prüfen und installierte Modelle auflisten (max. 3 Sekunden). */

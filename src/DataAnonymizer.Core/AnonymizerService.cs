@@ -29,7 +29,9 @@ public sealed class AnonymizerService
             [PiiCategory.Ort] = "ORT",
             [PiiCategory.Kennzeichen] = "KENNZEICHEN",
             [PiiCategory.Name] = "NAME",
-            [PiiCategory.Organisation] = "FIRMA"
+            [PiiCategory.Organisation] = "FIRMA",
+            [PiiCategory.Ip] = "IP",
+            [PiiCategory.Sensitiv] = "SENSIBEL"
         },
         [AppLanguage.En] = new()
         {
@@ -45,7 +47,9 @@ public sealed class AnonymizerService
             [PiiCategory.Ort] = "CITY",
             [PiiCategory.Kennzeichen] = "PLATE",
             [PiiCategory.Name] = "NAME",
-            [PiiCategory.Organisation] = "COMPANY"
+            [PiiCategory.Organisation] = "COMPANY",
+            [PiiCategory.Ip] = "IP",
+            [PiiCategory.Sensitiv] = "SENSITIVE"
         },
         [AppLanguage.Fr] = new()
         {
@@ -61,7 +65,9 @@ public sealed class AnonymizerService
             [PiiCategory.Ort] = "LIEU",
             [PiiCategory.Kennzeichen] = "PLAQUE",
             [PiiCategory.Name] = "NOM",
-            [PiiCategory.Organisation] = "SOCIETE"
+            [PiiCategory.Organisation] = "SOCIETE",
+            [PiiCategory.Ip] = "IP",
+            [PiiCategory.Sensitiv] = "SENSIBLE"
         },
         [AppLanguage.It] = new()
         {
@@ -77,7 +83,9 @@ public sealed class AnonymizerService
             [PiiCategory.Ort] = "LUOGO",
             [PiiCategory.Kennzeichen] = "TARGA",
             [PiiCategory.Name] = "NOME",
-            [PiiCategory.Organisation] = "DITTA"
+            [PiiCategory.Organisation] = "DITTA",
+            [PiiCategory.Ip] = "IP",
+            [PiiCategory.Sensitiv] = "SENSIBILE"
         }
     };
 
@@ -98,6 +106,19 @@ public sealed class AnonymizerService
     // Schweizer AHV-Nummer (756.1234.5678.97) und US Social Security Number (123-45-6789)
     private static readonly Regex SocialSecurityRx = new(
         @"\b756[.\s]?\d{4}[.\s]?\d{4}[.\s]?\d{2}\b|\b\d{3}-\d{2}-\d{4}\b", Opts);
+
+    // Schweizer Versichertenkarte (Krankenkasse): 20-stellige Nummer, beginnt mit 807.
+    private static readonly Regex HealthCardRx = new(
+        @"(?<!\d)807\d{17}(?!\d)", Opts);
+
+    // Schweizer Unternehmens-Identifikationsnummer (UID): CHE-123.456.789
+    private static readonly Regex UidRx = new(
+        @"\bCHE-\d{3}\.\d{3}\.\d{3}(?:\s?(?:MWST|TVA|IVA|VAT))?\b", Opts);
+
+    // IP-Adressen: IPv4 (mit Gültigkeitsprüfung 0-255) und einfache IPv6.
+    private static readonly Regex IpRx = new(
+        @"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b" +
+        @"|\b(?:[A-Fa-f0-9]{1,4}:){2,7}[A-Fa-f0-9]{1,4}\b", Opts);
 
     // Kandidaten für Kreditkarten (13–19 Ziffern), werden zusätzlich per Luhn geprüft.
     private static readonly Regex CardRx = new(
@@ -344,6 +365,13 @@ public sealed class AnonymizerService
         if (options.Ahv)
         {
             AddMatches(result, SocialSecurityRx.Matches(text), PiiCategory.Ahv, priority);
+            AddMatches(result, HealthCardRx.Matches(text), PiiCategory.Ahv, priority);
+        }
+
+        priority++;
+        if (options.IpAdressen)
+        {
+            AddMatches(result, IpRx.Matches(text), PiiCategory.Ip, priority);
         }
 
         priority++;
@@ -361,6 +389,7 @@ public sealed class AnonymizerService
         priority++;
         if (options.Referenzen)
         {
+            AddMatches(result, UidRx.Matches(text), PiiCategory.Referenz, priority);
             foreach (Match m in ReferenceRx.Matches(text))
             {
                 var g = m.Groups["ref"];
@@ -540,6 +569,8 @@ public sealed class AnonymizerService
         PiiCategory.Referenz => options.Referenzen,
         PiiCategory.Kennzeichen => options.Kennzeichen,
         PiiCategory.Organisation => options.Organisationen,
+        PiiCategory.Ip => options.IpAdressen,
+        PiiCategory.Sensitiv => options.SensitiveDaten,
         PiiCategory.Datum => options.Geburtsdaten || options.AlleDaten,
         _ => true
     };

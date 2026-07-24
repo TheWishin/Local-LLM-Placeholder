@@ -186,6 +186,39 @@ var allowLlm = svc.Anonymize("Max Muster arbeitet bei der Contoso AG.",
     new List<LlmEntity> { new("Max Muster", PiiCategory.Name), new("Contoso AG", PiiCategory.Organisation) });
 Check("Allow: Gilt auch für LLM-Funde", allowLlm.AnonymizedText.Contains("Contoso AG") && !allowLlm.AnonymizedText.Contains("Max Muster"));
 
+// --- Swiss-DSG-Detektoren (IP, UID, Versichertenkarte, sensible Daten) ---
+var dsgText = "Server 192.168.10.14 und 2001:db8::ff00:42:8329. Firma CHE-123.456.789 MWST. Karte 80756009012345678901.";
+var dsg = svc.Anonymize(dsgText, new AnonymizerOptions());
+var da = dsg.AnonymizedText;
+Check("DSG: IPv4 entfernt", !da.Contains("192.168.10.14") && da.Contains("[IP_1]"));
+Check("DSG: IPv6 entfernt", !da.Contains("2001:db8::ff00:42:8329"));
+Check("DSG: UID (CHE) entfernt", !da.Contains("CHE-123.456.789"));
+Check("DSG: Versichertenkarte entfernt", !da.Contains("80756009012345678901"));
+Check("DSG: Round-Trip", svc.Deanonymize(da, dsg.Mappings) == dsgText);
+
+var ipOff = svc.Anonymize("Server 192.168.10.14 down.", new AnonymizerOptions { IpAdressen = false });
+Check("DSG: IP-Erkennung abschaltbar", ipOff.AnonymizedText.Contains("192.168.10.14"));
+
+// Sensible Daten kommen vom lokalen LLM.
+var sens = svc.Anonymize("Der Kunde leidet an Depression und ist Mitglied der Gewerkschaft Unia.",
+    new AnonymizerOptions(),
+    new List<LlmEntity> { new("Depression", PiiCategory.Sensitiv), new("Mitglied der Gewerkschaft Unia", PiiCategory.Sensitiv) });
+Check("DSG: sensible Daten (LLM) entfernt",
+    !sens.AnonymizedText.Contains("Depression") && sens.AnonymizedText.Contains("[SENSIBEL_1]"));
+Check("DSG: sensible Kategorie abschaltbar",
+    svc.Anonymize("leidet an Depression", new AnonymizerOptions { SensitiveDaten = false },
+        new List<LlmEntity> { new("Depression", PiiCategory.Sensitiv) }).AnonymizedText.Contains("Depression"));
+
+Check("DSG: Kategorie-IDs Rundlauf (ip/sensitive)",
+    PiiCategoryIds.FromId("ip") == PiiCategory.Ip && PiiCategoryIds.FromId("sensitive") == PiiCategory.Sensitiv
+    && PiiCategoryIds.ToId(PiiCategory.Ip) == "ip" && PiiCategoryIds.ToId(PiiCategory.Sensitiv) == "sensitive");
+
+// LLM-Kategorien für sensible Daten korrekt zugeordnet.
+Check("DSG: LLM-Kategorie 'health' -> sensitiv",
+    LocalLlmClient.ParseEntities("""{"entities":[{"text":"Diabetes","category":"health"}]}""").Single().Category == PiiCategory.Sensitiv);
+Check("DSG: LLM-Kategorie 'ip' -> Ip",
+    LocalLlmClient.ParseEntities("""{"entities":[{"text":"10.0.0.5","category":"ip"}]}""").Single().Category == PiiCategory.Ip);
+
 // --- SQL-Skript-Rundlauf: Platzhalter tolerant zurückersetzen ---
 var sqlMappings = new List<MappingEntry>
 {

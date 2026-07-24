@@ -16,22 +16,65 @@ Deutsch, Englisch, Französisch und Italienisch verfügbar (Auswahl oben rechts)
 
 ## For testers – quickest way to try it
 
-Pick **one** of these; both are on the
-[Releases page](https://github.com/TheWishin/Local-LLM-Placeholder/releases/latest):
+Everything is on the
+[Releases page](https://github.com/TheWishin/Local-LLM-Placeholder/releases/latest).
 
-- **Desktop app** – download the ZIP for your system (`win-x64` for Windows,
-  `osx-arm64` for Apple-Silicon Macs, `osx-x64` for Intel Macs), unzip, run
-  `DataAnonymizer` and open <http://localhost:5100>. Nothing else to install.
-- **Browser extension (Chrome/Edge)** – download the `browser-extension` ZIP,
-  unzip it, open `chrome://extensions`, turn on **Developer mode**, click
-  **Load unpacked** and pick the folder. Click the 🔒 icon to use it. Installs
-  without admin rights, so it works on a locked-down work laptop.
+### Desktop app – one click, everything set up for you
+
+1. Download the ZIP for your system and unzip it:
+   - **Windows:** `...-win-x64.zip`
+   - **Mac (Apple Silicon, M1–M4):** `...-osx-arm64.zip`
+   - **Mac (Intel):** `...-osx-x64.zip`
+2. Run the one-click setup inside the folder:
+   - **Windows:** double-click **`Install-Windows.bat`**
+   - **Mac:** double-click **`Install-macOS.command`**
+3. That's it. The first time, it **installs the local AI (Ollama) by itself**,
+   downloads a small model, starts the app and opens your browser at
+   <http://localhost:5100>. Next time it starts instantly. A `START HERE.txt`
+   in the folder explains everything.
+
+Just want the app without the AI? Run `DataAnonymizer` directly – pattern
+detection still works, the optional AI simply stays off until Ollama is present.
+
+### Browser extension (Chrome/Edge)
+
+Download the `browser-extension` ZIP, unzip it, open `chrome://extensions`, turn
+on **Developer mode**, click **Load unpacked** and pick the folder. Click the 🔒
+icon to use it. Installs without admin rights, so it works on a locked-down work
+laptop.
 
 The app opens with a short **"How it works"** strip (1 Anonymize → 2 Use in your
-AI tool → 3 Translate back). The **local-AI detection is optional** – if you also
-want names without a salutation, company names, etc. to be caught, install
-[Ollama](https://ollama.com) and the app downloads a small model by itself the
-first time. Without Ollama, the pattern detection still works on its own.
+AI tool → 3 Translate back). Everything runs 100% locally; the optional AI
+(Ollama) does too.
+
+## Built for Swiss data protection (revDSG / nFADP)
+
+The tool is designed to help you work with personal data in line with the
+**revised Swiss Federal Act on Data Protection (revDSG, in force since Sept 2023)**
+and the EU GDPR – by keeping the data on your machine and stripping it out
+before anything reaches an external AI service. It pays particular attention to
+**special-category data** (*besonders schützenswerte Personendaten*): health,
+religion, political views, trade-union membership, biometric/genetic data, and
+data on administrative or criminal proceedings – detected by the local AI and
+replaced with a distinct `[SENSITIVE_n]` / `[SENSIBEL_n]` placeholder.
+
+Swiss-specific detectors include the **AHV number**, the **health-insurance card
+number**, the **UID** (`CHE-123.456.789`), canton **licence plates**, and
+**IP addresses** (personal data under the revDSG).
+
+*Detection is an aid and does not replace your own review. This is not legal advice.*
+
+### Typical use cases
+
+- **Insurance / claims:** paste a claim file, get advice or a letter drafted by
+  an AI, translate the answer back – without the customer's data ever leaving.
+- **Healthcare / HR:** case notes and reports with diagnoses or absences; the
+  sensitive-data detection is built for exactly this.
+- **Software & data teams:** let an AI write an **SQL script** against your
+  schema using placeholders, then translate the script back and run it with the
+  real values (the mapping is kept until you delete it – see below).
+- **Support / IT tickets:** logs with IP addresses, emails and names.
+- **Legal / admin dossiers:** references, case numbers, parties involved.
 
 ## Multi-language
 
@@ -135,8 +178,12 @@ The round trip is built for real work with AI tools:
 | Credit cards (with Luhn check) | 4539 1488 0343 6467 | `[KARTE_1]` / `[CARD_1]` |
 | Customer/policy/case numbers | Policy No. P-2023/4711 | `[REFERENZ_1]` / `[REFERENCE_1]` |
 | License plates (CH cantons) | ZH 456789 | `[KENNZEICHEN_1]` / `[PLATE_1]` |
+| Swiss UID (company ID) | CHE-123.456.789 | `[REFERENZ_1]` / `[REFERENCE_1]` |
+| Health-insurance card number | 80756009012345678901 | `[AHV_1]` / `[SSN_1]` |
+| IP addresses (IPv4 / IPv6) | 192.168.10.14 | `[IP_1]` |
 | Birth dates (optional: all dates) | geb. 12.03.1985, born on 12/03/1985 | `[DATUM_1]` / `[DATE_1]` |
 | Companies & organizations (via local LLM) | Contoso AG | `[FIRMA_1]` / `[COMPANY_1]` |
+| **Special-category data** (health, religion, …) (via local LLM) | "Diagnose: Depression" | `[SENSIBEL_1]` / `[SENSITIVE_1]` |
 | Custom terms (companies, projects, …) | Muster AG | `[BEGRIFF_1]` / `[TERM_1]` |
 
 Each category can be toggled individually. Same original value → always the

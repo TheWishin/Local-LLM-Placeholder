@@ -254,6 +254,8 @@
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optRef" @bind="_options.Referenzen" /><label class="form-check-label" for="optRef">@Loc.T.OptRefs</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optKz" @bind="_options.Kennzeichen" /><label class="form-check-label" for="optKz">@Loc.T.OptPlates</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optOrg" @bind="_options.Organisationen" /><label class="form-check-label" for="optOrg">@Loc.T.OptOrgs</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optIp" @bind="_options.IpAdressen" /><label class="form-check-label" for="optIp">@Loc.T.OptIp</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optSens" @bind="_options.SensitiveDaten" /><label class="form-check-label" for="optSens">@Loc.T.OptSensitive</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optGeb" @bind="_options.Geburtsdaten" /><label class="form-check-label" for="optGeb">@Loc.T.OptBirthdays</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optDaten" @bind="_options.AlleDaten" /><label class="form-check-label" for="optDaten">@Loc.T.OptAllDates</label></div>
             </div>
@@ -280,6 +282,8 @@
         </details>
     </div>
 </div>
+
+<footer class="dsg-note">🇨🇭 @Loc.T.DsgNote</footer>
 
 @code {
     private enum LlmStatus { Checking, Ready, Offline, Pulling, PullFailed }

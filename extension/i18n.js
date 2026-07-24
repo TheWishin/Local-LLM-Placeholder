@@ -45,6 +45,7 @@ export const STRINGS = {
         optStreets: 'Strassen', optCities: 'PLZ & Orte', optIban: 'IBAN',
         optSsn: 'AHV/SSN', optCards: 'Kreditkarten', optRefs: 'Referenz-Nummern',
         optPlates: 'Kennzeichen (CH)', optOrgs: 'Firmen (nur KI)',
+        optIp: 'IP-Adressen', optSensitive: 'Sensible Daten (revDSG, nur KI)',
         optBirthdays: 'Geburtsdaten', optAllDates: 'Alle Daten',
         termsLabel: 'Eigene Begriffe (einer pro Zeile)',
         termsPlaceholder: 'Muster AG\nAnna Beispiel',
@@ -61,7 +62,8 @@ export const STRINGS = {
         llmPullFailed: 'Download fehlgeschlagen – im Terminal „ollama pull {0}“ ausführen.',
         llmError: 'KI-Erkennung fehlgeschlagen – Ergebnis basiert nur auf den Regeln.',
         btnRecheck: '↻ Erneut prüfen',
-        footer: '100 % lokal – es werden keine Daten übertragen.'
+        footer: '100 % lokal – es werden keine Daten übertragen.',
+        dsgNote: '🇨🇭 Unterstützt revDSG-konformen Umgang mit Personendaten (inkl. sensibler Daten). Keine Rechtsberatung.'
     },
     en: {
         appTitle: '🔒 Data Anonymizer',
@@ -94,6 +96,7 @@ export const STRINGS = {
         optStreets: 'Streets', optCities: 'Postal codes & towns', optIban: 'IBAN',
         optSsn: 'AHV/SSN', optCards: 'Credit cards', optRefs: 'Reference numbers',
         optPlates: 'License plates (CH)', optOrgs: 'Companies (AI only)',
+        optIp: 'IP addresses', optSensitive: 'Sensitive data (revDSG, AI only)',
         optBirthdays: 'Birth dates', optAllDates: 'All dates',
         termsLabel: 'Custom terms (one per line)',
         termsPlaceholder: 'Acme Ltd\nAnna Example',
@@ -110,7 +113,8 @@ export const STRINGS = {
         llmPullFailed: 'Download failed – run “ollama pull {0}” in a terminal.',
         llmError: 'AI detection failed – result is based on the rules only.',
         btnRecheck: '↻ Check again',
-        footer: '100% local – no data is transmitted.'
+        footer: '100% local – no data is transmitted.',
+        dsgNote: '🇨🇭 Supports revDSG-compliant handling of personal data (incl. sensitive data). Not legal advice.'
     },
     fr: {
         appTitle: '🔒 Anonymiseur de données',
@@ -143,6 +147,7 @@ export const STRINGS = {
         optStreets: 'Rues', optCities: 'Codes postaux et localités', optIban: 'IBAN',
         optSsn: 'AVS/SSN', optCards: 'Cartes de crédit', optRefs: 'Numéros de référence',
         optPlates: "Plaques d'immatriculation (CH)", optOrgs: 'Entreprises (IA seulement)',
+        optIp: 'Adresses IP', optSensitive: 'Données sensibles (nLPD, IA seulement)',
         optBirthdays: 'Dates de naissance', optAllDates: 'Toutes les dates',
         termsLabel: 'Termes personnalisés (un par ligne)',
         termsPlaceholder: 'Exemple SA\nAnna Exemple',
@@ -159,7 +164,8 @@ export const STRINGS = {
         llmPullFailed: 'Téléchargement échoué – exécutez « ollama pull {0} » dans un terminal.',
         llmError: "La détection IA a échoué – résultat basé uniquement sur les règles.",
         btnRecheck: '↻ Revérifier',
-        footer: '100 % local – aucune donnée transmise.'
+        footer: '100 % local – aucune donnée transmise.',
+        dsgNote: '🇨🇭 Aide au traitement conforme à la nLPD (y c. données sensibles). Pas un conseil juridique.'
     },
     it: {
         appTitle: '🔒 Anonimizzatore di dati',
@@ -192,6 +198,7 @@ export const STRINGS = {
         optStreets: 'Vie', optCities: 'CAP e località', optIban: 'IBAN',
         optSsn: 'AVS/SSN', optCards: 'Carte di credito', optRefs: 'Numeri di riferimento',
         optPlates: 'Targhe (CH)', optOrgs: 'Aziende (solo IA)',
+        optIp: 'Indirizzi IP', optSensitive: 'Dati sensibili (revDSG, solo IA)',
         optBirthdays: 'Date di nascita', optAllDates: 'Tutte le date',
         termsLabel: 'Termini personalizzati (uno per riga)',
         termsPlaceholder: 'Esempio SA\nAnna Esempio',
@@ -208,7 +215,8 @@ export const STRINGS = {
         llmPullFailed: 'Download non riuscito – esegui «ollama pull {0}» in un terminale.',
         llmError: 'Riconoscimento IA non riuscito – risultato basato solo sulle regole.',
         btnRecheck: '↻ Ricontrolla',
-        footer: '100 % locale – nessun dato viene trasmesso.'
+        footer: '100 % locale – nessun dato viene trasmesso.',
+        dsgNote: '🇨🇭 Supporta il trattamento conforme al revDSG (inclusi dati sensibili). Non è consulenza legale.'
     }
 };
 

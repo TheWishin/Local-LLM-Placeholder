@@ -1,0 +1,31 @@
+========================================================
+  Data Anonymizer  -  START HERE (Windows)
+========================================================
+
+The easy way (recommended)
+--------------------------
+1. Double-click:  Install-Windows.bat
+2. The first time, it installs the local AI (Ollama) and downloads a
+   small model automatically. This can take a few minutes - just wait.
+3. Your browser opens at http://localhost:5100. That's the app.
+4. To stop: close the black window.
+
+Next time, just double-click Install-Windows.bat again - it starts
+instantly because everything is already installed.
+
+Only want to run the app (skip the AI)?
+---------------------------------------
+Double-click  DataAnonymizer.exe  directly. Pattern detection still
+works; the optional AI (names without a salutation, health data, etc.)
+just won't be available until Ollama is installed.
+
+Is it private?
+--------------
+Yes. Everything runs on this computer. No text is ever sent to the
+internet. The optional AI (Ollama) also runs fully locally.
+
+Windows SmartScreen warning?
+----------------------------
+The app is not code-signed, so Windows may show "Windows protected your
+PC". Click "More info" -> "Run anyway". It is safe - it is just an
+unsigned local program.

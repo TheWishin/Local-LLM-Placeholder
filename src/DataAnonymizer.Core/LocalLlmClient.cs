@@ -282,6 +282,9 @@ public sealed class LocalLlmClient : IDisposable
         "plate" or "license_plate" => PiiCategory.Kennzeichen,
         "card" or "credit_card" => PiiCategory.Kreditkarte,
         "ssn" or "social_security" => PiiCategory.Ahv,
+        "ip" or "ip_address" => PiiCategory.Ip,
+        "sensitive" or "health" or "religion" or "political" or "union"
+            or "biometric" or "genetic" or "sexuality" or "criminal" => PiiCategory.Sensitiv,
         _ => PiiCategory.Begriff
     };
 
@@ -304,7 +307,17 @@ public sealed class LocalLlmClient : IDisposable
         - "address": street names with house numbers
         - "location": postal codes with towns or cities that reveal where someone lives
         - "id": customer, policy, case, insurance, social security or account numbers, IBANs, credit card numbers, license plates
+        - "ip": IP addresses (IPv4 or IPv6)
         - "birthdate": dates of birth
+        - "sensitive": special-category personal data under the Swiss revised Data
+          Protection Act (revDSG) and the EU GDPR. This means the concrete text spans
+          that reveal: health / medical conditions, diagnoses, disabilities;
+          religious, ideological or philosophical beliefs; political opinions;
+          trade-union membership; racial or ethnic origin; genetic or biometric data;
+          data about someone's sex life or sexual orientation; and data about social
+          assistance measures or administrative/criminal proceedings and sanctions.
+          Report the specific revealing phrase (e.g. "Diagnose: Depression",
+          "ist Mitglied der Gewerkschaft Unia", "katholisch"), not the whole sentence.
         - "other": anything else that could identify a specific person
 
         Rules:
@@ -312,6 +325,8 @@ public sealed class LocalLlmClient : IDisposable
         - List each distinct value once, even if it appears several times.
         - Do NOT report: generic words, job titles alone, country names, amounts of
           money, dates that are not birth dates, or placeholders like [NAME_1].
+        - Pay special attention to "sensitive" data - under the revDSG it needs the
+          strongest protection, so never miss health, religion or similar details.
         - If there is no PII, respond with {"entities":[]}.
         """;
 

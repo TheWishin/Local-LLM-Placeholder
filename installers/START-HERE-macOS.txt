@@ -1,0 +1,33 @@
+========================================================
+  Data Anonymizer  -  START HERE (macOS)
+========================================================
+
+The easy way (recommended)
+--------------------------
+1. Double-click:  Install-macOS.command
+2. The first time, it installs the local AI (Ollama) and downloads a
+   small model automatically. This can take a few minutes - just wait.
+3. Your browser opens at http://localhost:5100. That's the app.
+4. To stop: close the Terminal window (or press Ctrl+C).
+
+Next time, just double-click Install-macOS.command again.
+
+macOS blocks it? ("cannot be opened because it is from an
+unidentified developer")
+--------------------------------------------------------
+Right-click the file -> Open -> Open. You only need to do this once.
+If double-clicking the app binary is blocked too, do the same:
+right-click DataAnonymizer -> Open.
+
+If Terminal says "permission denied", open Terminal in this folder and run:
+    chmod +x Install-macOS.command DataAnonymizer
+
+Only want to run the app (skip the AI)?
+---------------------------------------
+Open Terminal in this folder and run:  ./DataAnonymizer
+Pattern detection works; the optional AI needs Ollama (ollama.com).
+
+Is it private?
+--------------
+Yes. Everything runs on this Mac. No text is ever sent to the internet.
+The optional AI (Ollama) also runs fully locally.

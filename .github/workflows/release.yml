@@ -45,6 +45,21 @@ jobs:
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
             dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
+            # Passenden One-Click-Installer + START-HERE beilegen, damit die
+            # Empfänger nur eine Datei anklicken müssen (Ollama installiert sich selbst).
+            case "$rid" in
+              win-x64)
+                cp installers/Install-Windows.bat "publish/$rid/"
+                cp installers/START-HERE-Windows.txt "publish/$rid/START HERE.txt" ;;
+              osx-x64|osx-arm64)
+                cp installers/Install-macOS.command "publish/$rid/"
+                chmod +x "publish/$rid/Install-macOS.command"
+                cp installers/START-HERE-macOS.txt "publish/$rid/START HERE.txt" ;;
+              linux-x64)
+                cp installers/Install-Linux.sh "publish/$rid/"
+                chmod +x "publish/$rid/Install-Linux.sh"
+                cp installers/START-HERE-Linux.txt "publish/$rid/START HERE.txt" ;;
+            esac
             (cd publish && zip -qr "../DataAnonymizer-${RELEASE_VERSION}-$rid.zip" "$rid")
           done
 

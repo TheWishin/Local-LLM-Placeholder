@@ -18,6 +18,7 @@ public sealed class UiText
     public required string Step3Desc { get; init; }
     public required string AdvancedTitle { get; init; }
     public required string AdvancedHint { get; init; }
+    public required string DsgNote { get; init; }
 
     public required string CardOriginal { get; init; }
     public required string InputPlaceholder { get; init; }
@@ -57,6 +58,8 @@ public sealed class UiText
     public required string OptRefs { get; init; }
     public required string OptPlates { get; init; }
     public required string OptOrgs { get; init; }
+    public required string OptIp { get; init; }
+    public required string OptSensitive { get; init; }
     public required string OptBirthdays { get; init; }
     public required string OptAllDates { get; init; }
 
@@ -149,6 +152,7 @@ public static class UiStrings
         Step3Desc = "Die Antwort hier einfügen – die Platzhalter werden wieder durch deine echten Daten ersetzt.",
         AdvancedTitle = "⚙️ Erweiterte Einstellungen",
         AdvancedHint = "Standardmässig ist alles sinnvoll eingestellt. Hier kannst du festlegen, was erkannt wird, und eigene Begriffe hinzufügen.",
+        DsgNote = "Unterstützt den datenschutzkonformen Umgang mit Personendaten nach dem revidierten Schweizer Datenschutzgesetz (revDSG) – inkl. besonders schützenswerter Daten. Die Erkennung ist eine Hilfe und ersetzt die eigene Kontrolle nicht; dies ist keine Rechtsberatung.",
         CardOriginal = "1️⃣ Originaltext mit persönlichen Daten",
         InputPlaceholder = "Falltext hier einfügen, z.B.:\nHerr Max Muster (geb. 12.03.1985), Bahnhofstrasse 12, 8001 Zürich, Tel. +41 79 123 45 67, max.muster@example.ch, meldet einen Schaden. Policen-Nr. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonymisieren",
@@ -184,6 +188,8 @@ public static class UiStrings
         OptRefs = "Kunden-/Policen-/Fall-Nummern",
         OptPlates = "Autokennzeichen (CH)",
         OptOrgs = "Firmen & Organisationen (nur mit KI)",
+        OptIp = "IP-Adressen",
+        OptSensitive = "Besonders schützenswerte Daten (revDSG, nur mit KI)",
         OptBirthdays = "Geburtsdaten („geb.“, „geboren am“)",
         OptAllDates = "Alle Datumsangaben",
         CardTerms = "📝 Eigene Begriffe",
@@ -225,6 +231,7 @@ public static class UiStrings
         Step3Desc = "Paste the answer here – the placeholders are replaced with your real data again.",
         AdvancedTitle = "⚙️ Advanced settings",
         AdvancedHint = "Everything is set up sensibly by default. Here you can choose what gets detected and add your own terms.",
+        DsgNote = "Helps you handle personal data in line with the revised Swiss Data Protection Act (revDSG/nFADP), including special-category data. Detection is an aid and does not replace your own review; this is not legal advice.",
         CardOriginal = "1️⃣ Original text with personal data",
         InputPlaceholder = "Paste your case text here, e.g.:\nMr. John Smith (born on 12/03/1985), 12 Main Street, Zurich, phone +41 79 123 45 67, john.smith@example.com, reports a claim. Policy No. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonymize",
@@ -260,6 +267,8 @@ public static class UiStrings
         OptRefs = "Customer/policy/case numbers",
         OptPlates = "License plates (CH)",
         OptOrgs = "Companies & organizations (AI only)",
+        OptIp = "IP addresses",
+        OptSensitive = "Special-category data (revDSG, AI only)",
         OptBirthdays = "Birth dates (“born on”, “DOB:”)",
         OptAllDates = "All dates",
         CardTerms = "📝 Custom terms",
@@ -301,6 +310,7 @@ public static class UiStrings
         Step3Desc = "Collez la réponse ici – les variables sont remplacées par vos vraies données.",
         AdvancedTitle = "⚙️ Paramètres avancés",
         AdvancedHint = "Tout est configuré judicieusement par défaut. Ici, vous pouvez choisir ce qui est détecté et ajouter vos propres termes.",
+        DsgNote = "Aide à traiter les données personnelles conformément à la nouvelle loi suisse sur la protection des données (nLPD/revDSG), y compris les données sensibles. La détection est une aide et ne remplace pas votre contrôle ; ceci n'est pas un conseil juridique.",
         CardOriginal = "1️⃣ Texte original avec données personnelles",
         InputPlaceholder = "Collez votre texte ici, p. ex. :\nMonsieur Jean Dupont (né le 12.03.1985), Rue de Lausanne 12, 1201 Genève, tél. +41 79 123 45 67, jean.dupont@example.ch, annonce un sinistre. N° de police P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonymiser",
@@ -336,6 +346,8 @@ public static class UiStrings
         OptRefs = "N° de client/police/dossier",
         OptPlates = "Plaques d'immatriculation (CH)",
         OptOrgs = "Entreprises et organisations (IA seulement)",
+        OptIp = "Adresses IP",
+        OptSensitive = "Données sensibles (nLPD, IA seulement)",
         OptBirthdays = "Dates de naissance (« né le », …)",
         OptAllDates = "Toutes les dates",
         CardTerms = "📝 Termes personnalisés",
@@ -377,6 +389,7 @@ public static class UiStrings
         Step3Desc = "Incolla la risposta qui – i segnaposto vengono sostituiti di nuovo con i tuoi dati reali.",
         AdvancedTitle = "⚙️ Impostazioni avanzate",
         AdvancedHint = "Tutto è impostato in modo sensato per impostazione predefinita. Qui puoi scegliere cosa viene rilevato e aggiungere i tuoi termini.",
+        DsgNote = "Aiuta a trattare i dati personali secondo la legge svizzera riveduta sulla protezione dei dati (revDSG/nLPD), inclusi i dati sensibili. Il riconoscimento è un aiuto e non sostituisce il tuo controllo; questa non è una consulenza legale.",
         CardOriginal = "1️⃣ Testo originale con dati personali",
         InputPlaceholder = "Incolla qui il testo, ad es.:\nSignor Mario Rossi (nato il 12.03.1985), Via Roma 8, 6900 Lugano, tel. +41 79 123 45 67, mario.rossi@example.ch, segnala un sinistro. Polizza n. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonimizza",
@@ -412,6 +425,8 @@ public static class UiStrings
         OptRefs = "N. cliente/polizza/pratica",
         OptPlates = "Targhe (CH)",
         OptOrgs = "Aziende e organizzazioni (solo IA)",
+        OptIp = "Indirizzi IP",
+        OptSensitive = "Dati sensibili (revDSG, solo IA)",
         OptBirthdays = "Date di nascita («nato il», …)",
         OptAllDates = "Tutte le date",
         CardTerms = "📝 Termini personalizzati",

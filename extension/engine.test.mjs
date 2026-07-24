@@ -148,6 +148,27 @@ const allowLlm = anonymize('Max Muster arbeitet bei der Contoso AG.',
     [{ text: 'Max Muster', category: 'name' }, { text: 'Contoso AG', category: 'org' }]);
 check('Allow: Gilt auch für LLM-Funde', allowLlm.anonymizedText.includes('Contoso AG') && !allowLlm.anonymizedText.includes('Max Muster'));
 
+// --- Swiss-DSG-Detektoren (IP, UID, Versichertenkarte, sensible Daten) ---
+const dsgText = 'Server 192.168.10.14 und 2001:db8::ff00:42:8329. Firma CHE-123.456.789 MWST. Karte 80756009012345678901.';
+const dsg = anonymize(dsgText, defaultOptions());
+const da = dsg.anonymizedText;
+check('DSG: IPv4 entfernt', !da.includes('192.168.10.14') && da.includes('[IP_1]'));
+check('DSG: IPv6 entfernt', !da.includes('2001:db8::ff00:42:8329'));
+check('DSG: UID (CHE) entfernt', !da.includes('CHE-123.456.789'));
+check('DSG: Versichertenkarte entfernt', !da.includes('80756009012345678901'));
+check('DSG: Round-Trip', deanonymize(da, dsg.mappings) === dsgText);
+check('DSG: IP-Erkennung abschaltbar',
+    anonymize('Server 192.168.10.14 down.', { ...defaultOptions(), ip: false }).anonymizedText.includes('192.168.10.14'));
+
+const sens = anonymize('Der Kunde leidet an Depression und ist Mitglied der Gewerkschaft Unia.',
+    defaultOptions(),
+    [{ text: 'Depression', category: 'sensitive' }, { text: 'Mitglied der Gewerkschaft Unia', category: 'sensitive' }]);
+check('DSG: sensible Daten (LLM) entfernt', !sens.anonymizedText.includes('Depression') && sens.anonymizedText.includes('[SENSIBEL_1]'));
+check('DSG: sensible Kategorie abschaltbar',
+    anonymize('leidet an Depression', { ...defaultOptions(), sensitive: false }, [{ text: 'Depression', category: 'sensitive' }]).anonymizedText.includes('Depression'));
+check('DSG: Parse health -> sensitive', parseEntities('{"entities":[{"text":"Diabetes","category":"health"}]}')[0].category === 'sensitive');
+check('DSG: Parse ip -> ip', parseEntities('{"entities":[{"text":"10.0.0.5","category":"ip"}]}')[0].category === 'ip');
+
 // --- SQL-Skript-Rundlauf: Platzhalter tolerant zurückersetzen ---
 const sqlMappings = [
     { placeholder: '[NAME_1]', original: 'Max Muster', category: 'name' },

@@ -108,6 +108,16 @@ a, .btn-link {
 .advanced-panel[open] > summary::after { transform: rotate(90deg); }
 .advanced-panel .card + .card { border-top: 1px solid #eef1f7; }
 
+/* revDSG footer note */
+.dsg-note {
+    margin: 26px auto 8px;
+    max-width: 900px;
+    font-size: .82rem;
+    color: #6b7280;
+    text-align: center;
+    line-height: 1.4;
+}
+
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
