@@ -21,3 +21,4 @@ start "" cmd /c "timeout /t 3 /nobreak >nul && start %URL%"
 
 echo Starte Daten-Anonymisierer auf %URL% (Beenden mit Ctrl+C) ...
 dotnet run --project src\DataAnonymizer --urls %URL%
+ 
