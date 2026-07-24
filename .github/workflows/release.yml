@@ -16,8 +16,10 @@ on:
 permissions:
   contents: write
 
+# Achtung: nicht "VERSION" nennen – MSBuild interpretiert die Umgebungsvariable
+# VERSION als .NET-Versionsnummer, und "v1.0.0" ist dafür ungültig.
 env:
-  VERSION: ${{ inputs.version || github.ref_name }}
+  RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
 
 jobs:
   release:
@@ -43,12 +45,12 @@ jobs:
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
             dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
-            (cd publish && zip -qr "../DataAnonymizer-${VERSION}-$rid.zip" "$rid")
+            (cd publish && zip -qr "../DataAnonymizer-${RELEASE_VERSION}-$rid.zip" "$rid")
           done
 
       - name: Browser-Erweiterung paketieren (Chrome/Edge)
         run: |
-          zip -qr "DataAnonymizer-${VERSION}-browser-extension.zip" extension \
+          zip -qr "DataAnonymizer-${RELEASE_VERSION}-browser-extension.zip" extension \
             -x "extension/engine.test.mjs"
 
       - name: GitHub-Release erstellen
