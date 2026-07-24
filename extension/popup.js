@@ -104,6 +104,7 @@ function renderTexts() {
     $('inputText').placeholder = s.inputPlaceholder;
     $('anonymizeBtn').textContent = state.busy ? s.btnAnonymizeBusy : s.btnAnonymize;
     $('clearBtn').textContent = s.btnClear;
+    $('pasteBtn').textContent = s.btnPaste;
     $('outputLabel').textContent = s.outputLabel;
     $('copyOutputBtn').textContent = s.btnCopy;
     $('mappingNote').textContent = s.mappingNote;
@@ -216,7 +217,7 @@ function renderMappingTable() {
         row.insertCell().append(code);
         row.insertCell().textContent = m.original;
         const badge = document.createElement('span');
-        badge.className = 'badge';
+        badge.className = `cat-badge cat-${m.category}`;
         badge.textContent = labelFor(m.category, state.lang);
         row.insertCell().append(badge);
         const eye = document.createElement('button');
@@ -227,6 +228,32 @@ function renderMappingTable() {
         row.insertCell().append(eye);
     }
     renderChips();
+    renderCatSummary();
+}
+
+function renderCatSummary() {
+    const wrap = $('catSummary');
+    wrap.innerHTML = '';
+    if (state.mappings.length === 0) {
+        return;
+    }
+    const counts = new Map();
+    for (const m of state.mappings) {
+        counts.set(m.category, (counts.get(m.category) ?? 0) + 1);
+    }
+    const summary = document.createElement('div');
+    summary.className = 'muted small';
+    summary.textContent = format(t().summaryLine, state.mappings.length, counts.size);
+    wrap.append(summary);
+    const row = document.createElement('div');
+    row.className = 'cat-badges';
+    for (const [cat, n] of [...counts.entries()].sort((a, b) => b[1] - a[1])) {
+        const b = document.createElement('span');
+        b.className = `cat-badge cat-${cat}`;
+        b.textContent = `${labelFor(cat, state.lang)} \u00b7 ${n}`;
+        row.append(b);
+    }
+    wrap.append(row);
 }
 
 function renderChips() {
@@ -548,6 +575,17 @@ async function main() {
 
     $('anonymizeBtn').addEventListener('click', runAnonymize);
     $('clearBtn').addEventListener('click', clearAll);
+    $('pasteBtn').addEventListener('click', async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                $('inputText').value = text;
+                saveSession();
+            }
+        } catch {
+            // Clipboard-Zugriff verweigert - nichts tun.
+        }
+    });
     $('deanonymizeBtn').addEventListener('click', runDeanonymize);
     $('copyOutputBtn').addEventListener('click', e => copyButton(e.target, 'outputText'));
     $('copyRestoredBtn').addEventListener('click', e => copyButton(e.target, 'restoredText'));

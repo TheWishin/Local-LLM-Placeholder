@@ -118,6 +118,54 @@ a, .btn-link {
     line-height: 1.4;
 }
 
+/* Colour-coded category badges (same colours in app + extension) */
+.cat-badge {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    border-radius: 6px;
+    padding: 2px 7px;
+    color: #fff;
+    white-space: nowrap;
+}
+.cat-name       { background: #2563eb; }
+.cat-email      { background: #0d9488; }
+.cat-phone      { background: #16a34a; }
+.cat-address    { background: #ea580c; }
+.cat-city       { background: #d97706; }
+.cat-iban       { background: #7c3aed; }
+.cat-ssn        { background: #dc2626; }
+.cat-card       { background: #db2777; }
+.cat-ref        { background: #4f46e5; }
+.cat-plate      { background: #6b7280; }
+.cat-org        { background: #0891b2; }
+.cat-ip         { background: #475569; }
+.cat-date       { background: #65a30d; }
+.cat-term       { background: #78716c; }
+.cat-sensitive  { background: #b91c1c; box-shadow: 0 0 0 2px rgba(185,28,28,.25); }
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    html, body { background: #0f141b; color: #e5e9f0; }
+    a, .btn-link { color: #7da9ff; }
+    .app-hero { background: linear-gradient(135deg, #16202e 0%, #0f141b 100%); border-color: #263243; }
+    .hero-tagline { color: #aab4c4; }
+    .privacy-badge { background: #06281f; color: #6ee7b7; border-color: #14603f; }
+    .how-step, .card { background: #151c26; border-color: #263243; color: #e5e9f0; }
+    .how-step-desc, .dsg-note, .text-muted { color: #98a3b3 !important; }
+    .card-header { background: #151c26; border-color: #212b39; color: #e5e9f0; }
+    .form-control, .form-select {
+        background: #0f141b; color: #e5e9f0; border-color: #2c3848;
+    }
+    .form-control:focus, .form-select:focus { background: #0f141b; color: #e5e9f0; }
+    .form-control.bg-light, .bg-light { background: #0b1017 !important; color: #cfd6e2 !important; }
+    .table { color: #e5e9f0; }
+    .table-striped > tbody > tr:nth-of-type(odd) > * { background: #121924; color: #e5e9f0; }
+    code { color: #f0a4c0; }
+    .advanced-panel > summary::after { color: #7a8697; }
+}
+
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }

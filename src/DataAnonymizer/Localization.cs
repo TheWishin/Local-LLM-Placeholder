@@ -25,6 +25,8 @@ public sealed class UiText
     public required string BtnAnonymize { get; init; }
     public required string BtnAnonymizeBusy { get; init; }
     public required string BtnClear { get; init; }
+    public required string BtnPaste { get; init; }
+    public required string SummaryLine { get; init; }   // {0} = Werte, {1} = Kategorien
 
     public required string CardAnonymized { get; init; }
     public required string BtnCopy { get; init; }
@@ -158,6 +160,8 @@ public static class UiStrings
         BtnAnonymize = "🔒 Anonymisieren",
         BtnAnonymizeBusy = "⏳ Analysiere …",
         BtnClear = "Leeren",
+        BtnPaste = "📥 Einfügen",
+        SummaryLine = "{0} Werte in {1} Kategorien ersetzt",
         CardAnonymized = "2️⃣ Anonymisierter Text – sicher für Claude Code",
         BtnCopy = "📋 Kopieren",
         Copied = "✔ Kopiert",
@@ -237,6 +241,8 @@ public static class UiStrings
         BtnAnonymize = "🔒 Anonymize",
         BtnAnonymizeBusy = "⏳ Analyzing …",
         BtnClear = "Clear",
+        BtnPaste = "📥 Paste",
+        SummaryLine = "{0} values in {1} categories replaced",
         CardAnonymized = "2️⃣ Anonymized text – safe for Claude Code",
         BtnCopy = "📋 Copy",
         Copied = "✔ Copied",
@@ -316,6 +322,8 @@ public static class UiStrings
         BtnAnonymize = "🔒 Anonymiser",
         BtnAnonymizeBusy = "⏳ Analyse en cours …",
         BtnClear = "Effacer",
+        BtnPaste = "📥 Coller",
+        SummaryLine = "{0} valeurs remplacées dans {1} catégories",
         CardAnonymized = "2️⃣ Texte anonymisé – sûr pour Claude Code",
         BtnCopy = "📋 Copier",
         Copied = "✔ Copié",
@@ -395,6 +403,8 @@ public static class UiStrings
         BtnAnonymize = "🔒 Anonimizza",
         BtnAnonymizeBusy = "⏳ Analisi in corso …",
         BtnClear = "Svuota",
+        BtnPaste = "📥 Incolla",
+        SummaryLine = "{0} valori sostituiti in {1} categorie",
         CardAnonymized = "2️⃣ Testo anonimizzato – sicuro per Claude Code",
         BtnCopy = "📋 Copia",
         Copied = "✔ Copiato",

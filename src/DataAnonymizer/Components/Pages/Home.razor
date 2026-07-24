@@ -63,10 +63,11 @@
                 <textarea class="form-control font-monospace" rows="10"
                           placeholder="@Loc.T.InputPlaceholder"
                           @bind="_inputText"></textarea>
-                <div class="d-flex gap-2 mt-3 align-items-center">
+                <div class="d-flex gap-2 mt-3 align-items-center flex-wrap">
                     <button class="btn btn-primary" disabled="@_busy" @onclick="RunAnonymizeAsync">
                         @(_busy ? Loc.T.BtnAnonymizeBusy : Loc.T.BtnAnonymize)
                     </button>
+                    <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="PasteInputAsync">@Loc.T.BtnPaste</button>
                     <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="ClearAll">@Loc.T.BtnClear</button>
                 </div>
                 @if (_busy && _llmEnabled && _llmStatus == LlmStatus.Ready)
@@ -94,7 +95,19 @@
 
                     @if (_result.Mappings.Count > 0)
                     {
-                        <h6 class="mt-4">@string.Format(Loc.T.MappingTitle, _result.Mappings.Count)</h6>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-4 mb-2">
+                            <h6 class="mb-0">@string.Format(Loc.T.MappingTitle, _result.Mappings.Count)</h6>
+                            <span class="text-muted small">·
+                                @string.Format(Loc.T.SummaryLine, _result.Mappings.Count, CategoryCounts.Count)</span>
+                        </div>
+                        <div class="mb-2">
+                            @foreach (var (cat, count) in CategoryCounts)
+                            {
+                                <span class="cat-badge cat-@PiiCategoryIds.ToId(cat) me-1 mb-1">
+                                    @AnonymizerService.LabelFor(cat, Loc.Language) · @count
+                                </span>
+                            }
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm table-striped align-middle">
                                 <thead>
@@ -111,7 +124,7 @@
                                         <tr>
                                             <td><code>@m.Placeholder</code></td>
                                             <td>@m.Original</td>
-                                            <td><span class="badge text-bg-secondary">@AnonymizerService.LabelFor(m.Category, Loc.Language)</span></td>
+                                            <td><span class="cat-badge cat-@PiiCategoryIds.ToId(m.Category)">@AnonymizerService.LabelFor(m.Category, Loc.Language)</span></td>
                                             <td class="text-end">
                                                 <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="@Loc.T.AllowTooltip"
                                                         @onclick="() => AllowValueAsync(m.Original)">👁</button>
@@ -467,6 +480,25 @@
         .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+
+    /// <summary>Anzahl ersetzter Werte je Kategorie (für die Zusammenfassung/Badges).</summary>
+    private IReadOnlyList<(PiiCategory Category, int Count)> CategoryCounts =>
+        _result is null
+            ? Array.Empty<(PiiCategory, int)>()
+            : _result.Mappings
+                .GroupBy(m => m.Category)
+                .OrderByDescending(g => g.Count())
+                .Select(g => (g.Key, g.Count()))
+                .ToList();
+
+    private async Task PasteInputAsync()
+    {
+        var text = await JS.InvokeAsync<string?>("appClipboard.paste");
+        if (!string.IsNullOrEmpty(text))
+        {
+            _inputText = text;
+        }
+    }
 
     private void ApplyOptionLists()
     {

@@ -1,6 +1,11 @@
 # 🔒 Data Anonymizer / Daten-Anonymisierer (Local LLM Placeholder)
 
 [![Build & Test](https://github.com/TheWishin/Local-LLM-Placeholder/actions/workflows/build.yml/badge.svg)](https://github.com/TheWishin/Local-LLM-Placeholder/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+> **Free & open source (MIT).** Copy it, change it, rebrand it, ship your own
+> version. See **[Make your own version](CONTRIBUTING.md#make-your-own-version-fork-guide)**.
 
 A local Blazor web app that **detects personal data in case texts and replaces it
 with placeholders** – so you can paste cases into Claude Code or other AI tools
@@ -259,6 +264,20 @@ extension/                   Chrome/Edge extension (same engine ported to JavaSc
 The C# core and the JavaScript engine implement the same detection rules –
 when changing one, change the other (`AnonymizerService.cs` ↔ `engine.js`,
 `LocalLlmClient.cs` ↔ `ollama.js`) and run both test suites.
+
+## Open source – make your own version
+
+This project is **MIT-licensed**: you can fork it, rebrand it and release your
+own build for free. The [CONTRIBUTING guide](CONTRIBUTING.md) has a short
+**"Make your own version"** walkthrough (change the name/icons, add your own
+detection rules, pick a different AI model, and let GitHub Actions build the
+packages for you). Contributions – new detectors, translations, design – are
+welcome.
+
+The desktop app (C#) and the browser extension (JavaScript) share the same
+detection logic on purpose, so a rule you add in one place is easy to mirror in
+the other. Category colours, placeholder labels and all UI text are centralised
+and localised in four languages.
 
 ## Important note
 

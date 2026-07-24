@@ -36,6 +36,7 @@
         <textarea id="inputText" rows="7"></textarea>
         <div class="btn-row">
             <button id="anonymizeBtn" class="primary"></button>
+            <button id="pasteBtn" class="ghost"></button>
             <button id="clearBtn" class="ghost"></button>
         </div>
         <div id="llmErrorNote" class="warn small hidden"></div>
@@ -47,8 +48,9 @@
             <button id="copyOutputBtn" class="ghost small-btn"></button>
         </div>
         <textarea id="outputText" rows="7" readonly></textarea>
-        <details id="mappingDetails">
+        <details id="mappingDetails" open>
             <summary id="mappingSummary"></summary>
+            <div id="catSummary" class="cat-summary"></div>
             <table id="mappingTable"></table>
             <p class="muted small" id="mappingNote"></p>
         </details>

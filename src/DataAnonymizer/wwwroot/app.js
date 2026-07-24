@@ -14,6 +14,16 @@ window.appClipboard = {
         ta.select();
         document.execCommand("copy");
         document.body.removeChild(ta);
+    },
+    paste: async function () {
+        try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                return await navigator.clipboard.readText();
+            }
+        } catch (e) {
+            // Zugriff verweigert oder nicht verfügbar – leeren String liefern.
+        }
+        return "";
     }
 };
 
