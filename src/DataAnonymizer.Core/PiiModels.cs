@@ -67,4 +67,11 @@ public sealed class AnonymizerOptions
     public AppLanguage Language { get; set; } = AppLanguage.De;
 
     public List<CustomTerm> EigeneBegriffe { get; set; } = new();
+
+    /// <summary>
+    /// Werte, die nie ersetzt werden, obwohl die Erkennung sie findet –
+    /// z.B. per Klick auf einen Eintrag der Zuordnungstabelle freigegeben.
+    /// Vergleich: ohne Gross-/Kleinschreibung, Leerraum normalisiert.
+    /// </summary>
+    public List<string> ErlaubteWerte { get; set; } = new();
 }

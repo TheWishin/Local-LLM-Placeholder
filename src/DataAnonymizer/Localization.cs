@@ -50,6 +50,12 @@ public sealed class UiText
     public required string TermsHint { get; init; }
     public required string TermsPlaceholder { get; init; }
 
+    public required string CardAllowed { get; init; }
+    public required string AllowedHint { get; init; }
+    public required string AllowTooltip { get; init; }
+    public required string AllowedChipsTitle { get; init; }
+    public required string AllowedChipRemoveTooltip { get; init; }
+
     public required string CardLlm { get; init; }
     public required string LlmEnable { get; init; }
     public required string LlmHint { get; init; }
@@ -155,6 +161,11 @@ public static class UiStrings
         CardTerms = "📝 Eigene Begriffe",
         TermsHint = "Ein Begriff pro Zeile (z.B. Firmennamen, Projektnamen oder Namen ohne Anrede). Diese werden immer ersetzt und lokal im Browser gespeichert.",
         TermsPlaceholder = "Muster AG\nAnna Beispiel\nProjekt Phoenix",
+        CardAllowed = "✅ Erlaubte Werte",
+        AllowedHint = "Diese Werte werden nie ersetzt, auch wenn die Erkennung sie findet. Ein Wert pro Zeile – oder in der Zuordnungstabelle auf 👁 klicken. Wird lokal im Browser gespeichert.",
+        AllowTooltip = "Diesen Wert nicht ersetzen – im Text anzeigen",
+        AllowedChipsTitle = "Erlaubt (wird angezeigt):",
+        AllowedChipRemoveTooltip = "Wieder ersetzen",
         CardLlm = "🤖 KI-Erkennung (lokales LLM)",
         LlmEnable = "Lokales LLM zusätzlich verwenden",
         LlmHint = "Ein lokal laufendes Sprachmodell (via Ollama) versteht, was persönliche Daten sind, und findet auch Namen ohne Anrede, Firmen und Ähnliches, das kein Muster abdeckt. Der Text bleibt dabei zu 100 % auf diesem Rechner.",
@@ -212,6 +223,11 @@ public static class UiStrings
         CardTerms = "📝 Custom terms",
         TermsHint = "One term per line (e.g. company names, project names or names without a salutation). These are always replaced and stored locally in your browser.",
         TermsPlaceholder = "Acme Ltd\nAnna Example\nProject Phoenix",
+        CardAllowed = "✅ Allowed values",
+        AllowedHint = "These values are never replaced, even when detection finds them. One value per line – or click 👁 in the mapping table. Stored locally in your browser.",
+        AllowTooltip = "Do not replace this value – show it in the text",
+        AllowedChipsTitle = "Allowed (shown as-is):",
+        AllowedChipRemoveTooltip = "Replace again",
         CardLlm = "🤖 AI detection (local LLM)",
         LlmEnable = "Additionally use a local LLM",
         LlmHint = "A language model running locally (via Ollama) understands what personal data is and also finds names without salutations, companies and similar data that no pattern covers. Your text stays 100% on this machine.",
@@ -269,6 +285,11 @@ public static class UiStrings
         CardTerms = "📝 Termes personnalisés",
         TermsHint = "Un terme par ligne (p. ex. noms d'entreprises, de projets ou noms sans civilité). Ils sont toujours remplacés et enregistrés localement dans votre navigateur.",
         TermsPlaceholder = "Exemple SA\nAnna Exemple\nProjet Phoenix",
+        CardAllowed = "✅ Valeurs autorisées",
+        AllowedHint = "Ces valeurs ne sont jamais remplacées, même si la détection les trouve. Une valeur par ligne – ou cliquez sur 👁 dans la table de correspondance. Enregistré localement dans votre navigateur.",
+        AllowTooltip = "Ne pas remplacer cette valeur – l'afficher dans le texte",
+        AllowedChipsTitle = "Autorisé (affiché tel quel) :",
+        AllowedChipRemoveTooltip = "Remplacer à nouveau",
         CardLlm = "🤖 Détection IA (LLM local)",
         LlmEnable = "Utiliser en plus un LLM local",
         LlmHint = "Un modèle de langue exécuté localement (via Ollama) comprend ce que sont les données personnelles et trouve aussi les noms sans civilité, les entreprises et d'autres données qu'aucun modèle ne couvre. Votre texte reste à 100 % sur cette machine.",
@@ -326,6 +347,11 @@ public static class UiStrings
         CardTerms = "📝 Termini personalizzati",
         TermsHint = "Un termine per riga (ad es. nomi di aziende, di progetti o nomi senza titolo). Vengono sempre sostituiti e salvati localmente nel browser.",
         TermsPlaceholder = "Esempio SA\nAnna Esempio\nProgetto Phoenix",
+        CardAllowed = "✅ Valori consentiti",
+        AllowedHint = "Questi valori non vengono mai sostituiti, anche se il riconoscimento li trova. Un valore per riga – oppure clicca su 👁 nella tabella di corrispondenza. Salvato localmente nel browser.",
+        AllowTooltip = "Non sostituire questo valore – mostralo nel testo",
+        AllowedChipsTitle = "Consentito (mostrato così com'è):",
+        AllowedChipRemoveTooltip = "Sostituisci di nuovo",
         CardLlm = "🤖 Riconoscimento IA (LLM locale)",
         LlmEnable = "Usa anche un LLM locale",
         LlmHint = "Un modello linguistico eseguito localmente (via Ollama) capisce cosa sono i dati personali e trova anche nomi senza titolo, aziende e dati simili che nessun pattern copre. Il testo rimane al 100 % su questo computer.",

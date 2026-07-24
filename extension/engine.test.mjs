@@ -135,6 +135,19 @@ check('LLM: Round-Trip', deanonymize(la, llm.mappings) === llmText);
 const llmOff = anonymize(llmText, { ...defaultOptions(), names: false, orgs: false }, llmFindings);
 check('LLM: Deaktivierte Kategorien übersprungen', llmOff.anonymizedText.includes('Max Muster') && llmOff.anonymizedText.includes('Contoso AG'));
 
+// --- Erlaubte Werte (Allowlist) ---
+const allowText = 'Herr Max Muster wohnt in 8001 Zürich, Frau Anna Meier auch. Tel. +41 79 123 45 67.';
+const allow = anonymize(allowText, { ...defaultOptions(), allowedTerms: ['8001  zürich', 'Max Muster'] });
+check('Allow: Erlaubter Name bleibt sichtbar', allow.anonymizedText.includes('Max Muster'));
+check('Allow: Erlaubter Ort bleibt (case-insensitiv, Leerraum egal)', allow.anonymizedText.includes('8001 Zürich'));
+check('Allow: Andere Namen werden weiter ersetzt', !allow.anonymizedText.includes('Anna Meier'));
+check('Allow: Andere Kategorien unberührt', !allow.anonymizedText.includes('+41 79 123 45 67'));
+
+const allowLlm = anonymize('Max Muster arbeitet bei der Contoso AG.',
+    { ...defaultOptions(), allowedTerms: ['Contoso AG'] },
+    [{ text: 'Max Muster', category: 'name' }, { text: 'Contoso AG', category: 'org' }]);
+check('Allow: Gilt auch für LLM-Funde', allowLlm.anonymizedText.includes('Contoso AG') && !allowLlm.anonymizedText.includes('Max Muster'));
+
 // --- Parsen der LLM-Antwort (ollama.js) ---
 const parsed = parseEntities('{"entities":[{"text":"Max Muster","category":"name"},{"text":"Contoso AG","category":"organization"},{"text":"Max Muster","category":"name"}]}');
 check('Parse: Entitäten gelesen und dedupliziert',

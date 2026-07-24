@@ -19,6 +19,8 @@ const state = {
     llmModel: '',
     pullPercent: 0,
     mappings: [],
+    lastLlmFindings: null,
+    allowedTermsText: '',
     busy: false
 };
 
@@ -27,16 +29,18 @@ const t = () => STRINGS[state.lang];
 // ---- Persistenz -----------------------------------------------------------
 
 async function loadStored() {
-    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'llmEnabled', 'llmModel']);
+    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'allowedTerms', 'llmEnabled', 'llmModel']);
     state.lang = local.lang ?? detectLanguage(navigator.language);
     state.options = { ...defaultOptions(), ...(local.options ?? {}) };
     state.customTermsText = local.customTerms ?? '';
+    state.allowedTermsText = local.allowedTerms ?? '';
     state.llmEnabled = local.llmEnabled !== false; // Standard: an
     state.llmModel = local.llmModel ?? '';
 
-    const session = await chrome.storage.session.get(['input', 'output', 'mappings', 'response', 'restored']);
+    const session = await chrome.storage.session.get(['input', 'output', 'mappings', 'response', 'restored', 'llmFindings']);
     $('inputText').value = session.input ?? '';
     state.mappings = session.mappings ?? [];
+    state.lastLlmFindings = session.llmFindings ?? null;
     if (session.output !== undefined) {
         $('outputText').value = session.output;
         showResult(session.output, state.mappings);
@@ -55,6 +59,7 @@ const saveLocal = () => chrome.storage.local.set({
     lang: state.lang,
     options: state.options,
     customTerms: state.customTermsText,
+    allowedTerms: state.allowedTermsText,
     llmEnabled: state.llmEnabled,
     llmModel: state.llmModel
 });
@@ -64,7 +69,8 @@ const saveSession = () => chrome.storage.session.set({
     output: $('outputText').value,
     mappings: state.mappings,
     response: $('responseText').value,
-    restored: $('restoredText').value
+    restored: $('restoredText').value,
+    llmFindings: state.lastLlmFindings
 });
 
 // ---- Oberfläche -----------------------------------------------------------
@@ -95,6 +101,7 @@ function renderTexts() {
     $('settingsTitle').textContent = s.settingsTitle;
     $('termsLabel').textContent = s.termsLabel;
     $('customTerms').placeholder = s.termsPlaceholder;
+    $('allowedLabel').textContent = s.allowedLabel;
     $('llmEnableLabel').textContent = s.llmEnable;
     $('llmRecheck').textContent = s.btnRecheck;
     $('llmErrorNote').textContent = s.llmError;
@@ -194,7 +201,84 @@ function renderMappingTable() {
         badge.className = 'badge';
         badge.textContent = labelFor(m.category, state.lang);
         row.insertCell().append(badge);
+        const eye = document.createElement('button');
+        eye.className = 'eye-btn';
+        eye.textContent = '\u{1F441}';
+        eye.title = s.allowTooltip;
+        eye.addEventListener('click', () => allowValue(m.original));
+        row.insertCell().append(eye);
     }
+    renderChips();
+}
+
+function renderChips() {
+    const s = t();
+    const wrap = $('allowedChips');
+    const terms = allowedTermsList();
+    wrap.innerHTML = '';
+    if (terms.length === 0) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+    const title = document.createElement('span');
+    title.className = 'muted small';
+    title.textContent = s.allowedChipsTitle;
+    wrap.append(title);
+    for (const term of terms) {
+        const chip = document.createElement('button');
+        chip.className = 'chip';
+        chip.textContent = `${term} \u2715`;
+        chip.title = s.allowedChipRemoveTooltip;
+        chip.addEventListener('click', () => removeAllowed(term));
+        wrap.append(chip);
+    }
+}
+
+// ---- Erlaubte Werte -------------------------------------------------------
+
+function allowedTermsList() {
+    const seen = new Set();
+    const result = [];
+    for (const line of state.allowedTermsText.split('\n')) {
+        const term = line.trim();
+        if (term && !seen.has(term.toLowerCase())) {
+            seen.add(term.toLowerCase());
+            result.push(term);
+        }
+    }
+    return result;
+}
+
+// Neu anonymisieren ohne erneuten LLM-Aufruf (z.B. nach Freigabe eines Werts).
+function reAnonymize() {
+    const options = {
+        ...state.options,
+        language: state.lang,
+        customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean),
+        allowedTerms: allowedTermsList()
+    };
+    const result = anonymize($('inputText').value, options, state.lastLlmFindings);
+    showResult(result.anonymizedText, result.mappings);
+    saveSession();
+}
+
+function allowValue(original) {
+    const terms = allowedTermsList();
+    if (!terms.some(t2 => t2.toLowerCase() === original.toLowerCase())) {
+        terms.push(original);
+    }
+    state.allowedTermsText = terms.join('\n');
+    $('allowedTerms').value = state.allowedTermsText;
+    saveLocal();
+    reAnonymize();
+}
+
+function removeAllowed(term) {
+    state.allowedTermsText = allowedTermsList().filter(t2 => t2.toLowerCase() !== term.toLowerCase()).join('\n');
+    $('allowedTerms').value = state.allowedTermsText;
+    saveLocal();
+    reAnonymize();
 }
 
 function showResult(output, mappings) {
@@ -274,7 +358,8 @@ async function runAnonymize() {
     const options = {
         ...state.options,
         language: state.lang,
-        customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean)
+        customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean),
+        allowedTerms: allowedTermsList()
     };
 
     // Falls Ollama inzwischen gestartet wurde, ohne Neuöffnen erkennen.
@@ -293,6 +378,7 @@ async function runAnonymize() {
         }
     }
 
+    state.lastLlmFindings = llmFindings;
     const result = anonymize(text, options, llmFindings);
     showResult(result.anonymizedText, result.mappings);
     $('restoredText').classList.add('hidden');
@@ -319,10 +405,11 @@ function clearAll() {
     $('responseText').value = '';
     $('restoredText').value = '';
     state.mappings = [];
+    state.lastLlmFindings = null;
     $('outputSection').classList.add('hidden');
     $('deanonSection').classList.add('hidden');
     $('llmErrorNote').classList.add('hidden');
-    chrome.storage.session.remove(['input', 'output', 'mappings', 'response', 'restored']);
+    chrome.storage.session.remove(['input', 'output', 'mappings', 'response', 'restored', 'llmFindings']);
 }
 
 async function copyButton(button, textareaId) {
@@ -355,6 +442,15 @@ async function main() {
     $('customTerms').addEventListener('input', () => {
         state.customTermsText = $('customTerms').value;
         saveLocal();
+    });
+
+    $('allowedTerms').value = state.allowedTermsText;
+    $('allowedTerms').addEventListener('input', () => {
+        state.allowedTermsText = $('allowedTerms').value;
+        saveLocal();
+        if (!$('outputSection').classList.contains('hidden')) {
+            reAnonymize();
+        }
     });
 
     $('llmEnabled').addEventListener('change', () => {

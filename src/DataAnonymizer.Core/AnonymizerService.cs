@@ -241,6 +241,17 @@ public sealed class AnonymizerService
         }
 
         var candidates = Collect(text, options, llmFindings);
+
+        // Vom Benutzer freigegebene Werte vor der Überlappungs-Auflösung entfernen,
+        // damit sie auch keine anderen Treffer verdrängen.
+        if (options.ErlaubteWerte.Count > 0)
+        {
+            var allowed = new HashSet<string>(
+                options.ErlaubteWerte.Where(w => !string.IsNullOrWhiteSpace(w)).Select(Normalize),
+                StringComparer.OrdinalIgnoreCase);
+            candidates.RemoveAll(c => allowed.Contains(Normalize(c.Original)));
+        }
+
         var accepted = ResolveOverlaps(candidates);
 
         // Platzhalter vergeben: gleicher Wert (pro Kategorie) → gleicher Platzhalter.

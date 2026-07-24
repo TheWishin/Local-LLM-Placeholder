@@ -173,6 +173,19 @@ var llmOff = svc.Anonymize(llmText, new AnonymizerOptions { Namen = false, Organ
 Check("LLM: Deaktivierte Kategorien werden übersprungen",
     llmOff.AnonymizedText.Contains("Max Muster") && llmOff.AnonymizedText.Contains("Contoso AG"));
 
+// --- Erlaubte Werte (Allowlist) ---
+var allowOpts = new AnonymizerOptions { ErlaubteWerte = new List<string> { "8001  zürich", "Max Muster" } };
+var allow = svc.Anonymize("Herr Max Muster wohnt in 8001 Zürich, Frau Anna Meier auch. Tel. +41 79 123 45 67.", allowOpts);
+Check("Allow: Erlaubter Name bleibt sichtbar", allow.AnonymizedText.Contains("Max Muster"));
+Check("Allow: Erlaubter Ort bleibt (case-insensitiv, Leerraum egal)", allow.AnonymizedText.Contains("8001 Zürich"));
+Check("Allow: Andere Namen werden weiter ersetzt", !allow.AnonymizedText.Contains("Anna Meier"));
+Check("Allow: Andere Kategorien unberührt", !allow.AnonymizedText.Contains("+41 79 123 45 67"));
+
+var allowLlm = svc.Anonymize("Max Muster arbeitet bei der Contoso AG.",
+    new AnonymizerOptions { ErlaubteWerte = new List<string> { "Contoso AG" } },
+    new List<LlmEntity> { new("Max Muster", PiiCategory.Name), new("Contoso AG", PiiCategory.Organisation) });
+Check("Allow: Gilt auch für LLM-Funde", allowLlm.AnonymizedText.Contains("Contoso AG") && !allowLlm.AnonymizedText.Contains("Max Muster"));
+
 // --- Parsen der LLM-Antwort ---
 var parsed = LocalLlmClient.ParseEntities(
     """{"entities":[{"text":"Max Muster","category":"name"},{"text":"Contoso AG","category":"organization"},{"text":"Max Muster","category":"name"}]}""");

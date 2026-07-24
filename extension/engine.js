@@ -21,7 +21,10 @@ export function defaultOptions() {
         names: true, emails: true, phones: true, streets: true, cities: true,
         iban: true, ssn: true, cards: true, refs: true, plates: true, orgs: true,
         birthdays: true, allDates: false,
-        customTerms: []
+        customTerms: [],
+        // Werte, die nie ersetzt werden, obwohl die Erkennung sie findet
+        // (z.B. per Klick auf 👁 in der Zuordnungstabelle freigegeben).
+        allowedTerms: []
     };
 }
 
@@ -164,7 +167,16 @@ export function anonymize(text, options, llmFindings = null) {
         return { anonymizedText: '', mappings: [] };
     }
 
-    const candidates = collect(text, options, llmFindings);
+    let candidates = collect(text, options, llmFindings);
+
+    // Vom Benutzer freigegebene Werte vor der Überlappungs-Auflösung entfernen,
+    // damit sie auch keine anderen Treffer verdrängen.
+    const allowedTerms = (options.allowedTerms ?? []).filter(t => t && t.trim());
+    if (allowedTerms.length > 0) {
+        const allowed = new Set(allowedTerms.map(t => normalize(t).toLowerCase()));
+        candidates = candidates.filter(c => !allowed.has(normalize(c.original).toLowerCase()));
+    }
+
     const accepted = resolveOverlaps(candidates);
 
     const labels = LABELS[options.language] ?? LABELS.de;

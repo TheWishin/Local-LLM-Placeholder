@@ -76,8 +76,8 @@ detection talks only to Ollama on `localhost`.
 use Chrome or the desktop app instead.)
 
 The popup speaks German, English, French and Italian, has the same detection
-rules, custom terms and placeholder languages as the app, and de-anonymizes
-answers again. The mapping table lives only in the browser session and is
+rules, custom terms, allowed values (👁 click-to-allow) and placeholder
+languages as the app, and de-anonymizes answers again. The mapping table lives only in the browser session and is
 discarded when the browser closes. If Ollama is installed, the extension finds
 it automatically and downloads the default model on first use – exactly like
 the app.
@@ -109,6 +109,17 @@ the app.
 
 Each category can be toggled individually. Same original value → always the
 same placeholder, so the text stays consistent.
+
+**Your own rules in both directions** – available in the app *and* the
+extension alike:
+
+- **Custom terms** are always replaced, even when no pattern matches
+  (company names, project names, names without a salutation).
+- **Allowed values** are never replaced, even when detection finds them:
+  click **👁** next to any entry in the mapping table to keep that value
+  visible – the text updates immediately. Allowed values appear as green
+  chips (click ✕ to replace them again) and can also be edited as a list.
+  Both lists are stored locally in your browser.
 
 ## Getting started
 

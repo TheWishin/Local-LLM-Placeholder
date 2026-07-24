@@ -79,3 +79,18 @@ table { width: 100%; border-collapse: collapse; font-size: 12px; }
 td, th { border-bottom: 1px solid var(--border); padding: 3px 6px; text-align: left; vertical-align: top; }
 td code { font-size: 11px; }
 .badge { font-size: 10px; background: var(--border); border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+
+.eye-btn { border: none; background: none; padding: 0 2px; font-size: 13px; cursor: pointer; }
+.chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip {
+    font-size: 11px;
+    border: 1px solid #16a34a;
+    color: #16a34a;
+    background: transparent;
+    border-radius: 10px;
+    padding: 1px 8px;
+    cursor: pointer;
+}
+.chip:hover { text-decoration: line-through; }
+
+.section-label + textarea { margin-bottom: 8px; }
