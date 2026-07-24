@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+    <header>
+        <h1 id="appTitle"></h1>
+        <select id="languageSelect" aria-label="Language"></select>
+    </header>
+    <p class="muted" id="tagline"></p>
+
+    <section id="llmSection">
+        <label class="switch-row">
+            <input type="checkbox" id="llmEnabled" />
+            <span id="llmEnableLabel"></span>
+        </label>
+        <div id="llmStatus" class="muted small"></div>
+        <div id="llmProgressWrap" class="progress hidden"><div id="llmProgressBar" class="progress-bar"></div></div>
+        <div id="llmModelRow" class="hidden">
+            <select id="llmModelSelect"></select>
+            <button id="llmRecheck" class="ghost small-btn hidden"></button>
+        </div>
+    </section>
+
+    <section>
+        <label class="section-label" id="inputLabel" for="inputText"></label>
+        <textarea id="inputText" rows="7"></textarea>
+        <div class="btn-row">
+            <button id="anonymizeBtn" class="primary"></button>
+            <button id="clearBtn" class="ghost"></button>
+        </div>
+        <div id="llmErrorNote" class="warn small hidden"></div>
+    </section>
+
+    <section id="outputSection" class="hidden">
+        <div class="label-row">
+            <span class="section-label" id="outputLabel"></span>
+            <button id="copyOutputBtn" class="ghost small-btn"></button>
+        </div>
+        <textarea id="outputText" rows="7" readonly></textarea>
+        <details id="mappingDetails">
+            <summary id="mappingSummary"></summary>
+            <table id="mappingTable"></table>
+            <p class="muted small" id="mappingNote"></p>
+        </details>
+    </section>
+
+    <section id="deanonSection" class="hidden">
+        <details>
+            <summary id="deanonTitle"></summary>
+            <textarea id="responseText" rows="5"></textarea>
+            <div class="btn-row">
+                <button id="deanonymizeBtn" class="primary"></button>
+                <button id="copyRestoredBtn" class="ghost small-btn hidden"></button>
+            </div>
+            <textarea id="restoredText" rows="5" readonly class="hidden"></textarea>
+        </details>
+    </section>
+
+    <section>
+        <details>
+            <summary id="settingsTitle"></summary>
+            <div id="optionsGrid" class="options-grid"></div>
+            <label class="section-label" id="termsLabel" for="customTerms"></label>
+            <textarea id="customTerms" rows="3"></textarea>
+        </details>
+    </section>
+
+    <footer class="muted small" id="footerNote"></footer>
+
+    <script type="module" src="popup.js"></script>
+</body>
+</html>

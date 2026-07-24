@@ -1,0 +1,4 @@
+{
+    "extName": { "message": "Anonimizzatore di dati (locale)" },
+    "extDescription": { "message": "Sostituisce i dati personali con segnaposto prima di incollare un testo in uno strumento di IA - 100% locale, opzionalmente con un LLM locale via Ollama." }
+}

@@ -54,6 +54,34 @@ Any installed chat model can be picked in the sidebar (`qwen2.5:3b` or
 them). Endpoint and default model can be changed in
 `src/DataAnonymizer/appsettings.json` under `LocalLlm`.
 
+## 🧩 Browser extension (Chrome & Edge, Mac & Windows)
+
+The same anonymizer is also available as a **browser extension** – no .NET, no
+server, nothing to keep running. It works in Google Chrome and Microsoft Edge
+on macOS and Windows, and it installs without admin rights, so it's ideal for a
+locked-down work laptop. Everything runs inside the browser; the optional AI
+detection talks only to Ollama on `localhost`.
+
+**Install (Chrome):**
+
+1. Download `DataAnonymizer-…-browser-extension.zip` from
+   [Releases](https://github.com/TheWishin/Local-LLM-Placeholder/releases)
+   (or use the `extension/` folder of this repository) and unpack it.
+2. Open `chrome://extensions`, switch on **Developer mode** (top right).
+3. Click **Load unpacked** and select the unpacked `extension` folder.
+4. Pin the 🔒 icon to the toolbar – done.
+
+**Install (Edge):** same steps via `edge://extensions` → **Developer mode** →
+**Load unpacked**. (If your company blocks developer mode in Edge by policy,
+use Chrome or the desktop app instead.)
+
+The popup speaks German, English, French and Italian, has the same detection
+rules, custom terms and placeholder languages as the app, and de-anonymizes
+answers again. The mapping table lives only in the browser session and is
+discarded when the browser closes. If Ollama is installed, the extension finds
+it automatically and downloads the default model on first use – exactly like
+the app.
+
 ## Workflow
 
 1. **Anonymize:** paste the case text → "Anonymize" → copy the anonymized text.
@@ -134,7 +162,13 @@ git push origin v1.0.0
 src/DataAnonymizer/          Blazor web app (UI, 4 languages)
 src/DataAnonymizer.Core/     Detection & replacement logic + Ollama client (no web dependencies)
 tests/DataAnonymizer.Tests/  Automated tests (dotnet run --project tests/DataAnonymizer.Tests)
+extension/                   Chrome/Edge extension (same engine ported to JavaScript;
+                             tests: node extension/engine.test.mjs)
 ```
+
+The C# core and the JavaScript engine implement the same detection rules –
+when changing one, change the other (`AnonymizerService.cs` ↔ `engine.js`,
+`LocalLlmClient.cs` ↔ `ollama.js`) and run both test suites.
 
 ## Important note
 

@@ -1,0 +1,4 @@
+{
+    "extName": { "message": "Data Anonymizer (local)" },
+    "extDescription": { "message": "Replaces personal data with placeholders before you paste text into an AI tool - 100% locally, optionally with a local LLM via Ollama." }
+}

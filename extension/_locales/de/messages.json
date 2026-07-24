@@ -1,0 +1,4 @@
+{
+    "extName": { "message": "Daten-Anonymisierer (lokal)" },
+    "extDescription": { "message": "Ersetzt persönliche Daten durch Platzhalter, bevor du Text in ein KI-Tool einfügst – zu 100 % lokal, optional mit lokalem LLM via Ollama." }
+}

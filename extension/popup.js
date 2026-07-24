@@ -1,0 +1,390 @@
+// Popup-Logik: verbindet engine.js (Erkennung), ollama.js (lokales LLM) und
+// i18n.js (Sprachen). Einstellungen liegen in chrome.storage.local, der letzte
+// Arbeitsstand (inkl. Zuordnungstabelle) nur in chrome.storage.session –
+// er verschwindet also, sobald der Browser geschlossen wird.
+
+import { anonymize, deanonymize, labelFor, defaultOptions } from './engine.js';
+import * as ollama from './ollama.js';
+import { LANGUAGES, STRINGS, detectLanguage, format } from './i18n.js';
+
+const $ = id => document.getElementById(id);
+
+const state = {
+    lang: 'en',
+    options: defaultOptions(),
+    customTermsText: '',
+    llmEnabled: true,
+    llmStatus: 'checking',   // checking | ready | offline | pulling | pullfailed
+    llmModels: [],
+    llmModel: '',
+    pullPercent: 0,
+    mappings: [],
+    busy: false
+};
+
+const t = () => STRINGS[state.lang];
+
+// ---- Persistenz -----------------------------------------------------------
+
+async function loadStored() {
+    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'llmEnabled', 'llmModel']);
+    state.lang = local.lang ?? detectLanguage(navigator.language);
+    state.options = { ...defaultOptions(), ...(local.options ?? {}) };
+    state.customTermsText = local.customTerms ?? '';
+    state.llmEnabled = local.llmEnabled !== false; // Standard: an
+    state.llmModel = local.llmModel ?? '';
+
+    const session = await chrome.storage.session.get(['input', 'output', 'mappings', 'response', 'restored']);
+    $('inputText').value = session.input ?? '';
+    state.mappings = session.mappings ?? [];
+    if (session.output !== undefined) {
+        $('outputText').value = session.output;
+        showResult(session.output, state.mappings);
+    }
+    if (session.response) {
+        $('responseText').value = session.response;
+    }
+    if (session.restored) {
+        $('restoredText').value = session.restored;
+        $('restoredText').classList.remove('hidden');
+        $('copyRestoredBtn').classList.remove('hidden');
+    }
+}
+
+const saveLocal = () => chrome.storage.local.set({
+    lang: state.lang,
+    options: state.options,
+    customTerms: state.customTermsText,
+    llmEnabled: state.llmEnabled,
+    llmModel: state.llmModel
+});
+
+const saveSession = () => chrome.storage.session.set({
+    input: $('inputText').value,
+    output: $('outputText').value,
+    mappings: state.mappings,
+    response: $('responseText').value,
+    restored: $('restoredText').value
+});
+
+// ---- Oberfläche -----------------------------------------------------------
+
+const OPTION_KEYS = [
+    ['names', 'optNames'], ['emails', 'optEmails'], ['phones', 'optPhones'],
+    ['streets', 'optStreets'], ['cities', 'optCities'], ['iban', 'optIban'],
+    ['ssn', 'optSsn'], ['cards', 'optCards'], ['refs', 'optRefs'],
+    ['plates', 'optPlates'], ['orgs', 'optOrgs'],
+    ['birthdays', 'optBirthdays'], ['allDates', 'optAllDates']
+];
+
+function renderTexts() {
+    const s = t();
+    $('appTitle').textContent = s.appTitle;
+    $('tagline').textContent = s.tagline;
+    $('inputLabel').textContent = s.inputLabel;
+    $('inputText').placeholder = s.inputPlaceholder;
+    $('anonymizeBtn').textContent = state.busy ? s.btnAnonymizeBusy : s.btnAnonymize;
+    $('clearBtn').textContent = s.btnClear;
+    $('outputLabel').textContent = s.outputLabel;
+    $('copyOutputBtn').textContent = s.btnCopy;
+    $('mappingNote').textContent = s.mappingNote;
+    $('deanonTitle').textContent = s.deanonTitle;
+    $('responseText').placeholder = s.deanonPlaceholder;
+    $('deanonymizeBtn').textContent = s.btnDeanonymize;
+    $('copyRestoredBtn').textContent = s.btnCopy;
+    $('settingsTitle').textContent = s.settingsTitle;
+    $('termsLabel').textContent = s.termsLabel;
+    $('customTerms').placeholder = s.termsPlaceholder;
+    $('llmEnableLabel').textContent = s.llmEnable;
+    $('llmRecheck').textContent = s.btnRecheck;
+    $('llmErrorNote').textContent = s.llmError;
+    $('footerNote').textContent = s.footer;
+
+    const grid = $('optionsGrid');
+    grid.innerHTML = '';
+    for (const [key, labelKey] of OPTION_KEYS) {
+        const label = document.createElement('label');
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = state.options[key];
+        box.addEventListener('change', () => {
+            state.options[key] = box.checked;
+            saveLocal();
+        });
+        label.append(box, document.createTextNode(labelKey in s ? s[labelKey] : key));
+        grid.append(label);
+    }
+
+    if (state.mappings.length > 0 || $('outputText').value) {
+        renderMappingTable();
+    }
+    renderLlm();
+}
+
+function renderLlm() {
+    const s = t();
+    $('llmEnabled').checked = state.llmEnabled;
+    const status = $('llmStatus');
+    const modelRow = $('llmModelRow');
+    const progress = $('llmProgressWrap');
+    const recheck = $('llmRecheck');
+    modelRow.classList.add('hidden');
+    progress.classList.add('hidden');
+    recheck.classList.add('hidden');
+
+    if (!state.llmEnabled) {
+        status.textContent = '';
+        return;
+    }
+    switch (state.llmStatus) {
+        case 'checking':
+            status.textContent = s.llmChecking;
+            break;
+        case 'ready': {
+            status.textContent = s.llmReady;
+            modelRow.classList.remove('hidden');
+            const select = $('llmModelSelect');
+            select.innerHTML = '';
+            for (const m of state.llmModels) {
+                const option = document.createElement('option');
+                option.value = m;
+                option.textContent = m;
+                option.selected = m === state.llmModel;
+                select.append(option);
+            }
+            break;
+        }
+        case 'pulling':
+            status.textContent = format(s.llmPulling, ollama.DEFAULT_MODEL, state.pullPercent);
+            progress.classList.remove('hidden');
+            $('llmProgressBar').style.width = `${state.pullPercent}%`;
+            break;
+        case 'pullfailed':
+            status.textContent = format(s.llmPullFailed, ollama.DEFAULT_MODEL);
+            modelRow.classList.remove('hidden');
+            $('llmModelSelect').innerHTML = '';
+            recheck.classList.remove('hidden');
+            break;
+        case 'offline':
+            status.textContent = s.llmOffline;
+            modelRow.classList.remove('hidden');
+            $('llmModelSelect').innerHTML = '';
+            recheck.classList.remove('hidden');
+            break;
+    }
+}
+
+function renderMappingTable() {
+    const s = t();
+    $('outputSection').classList.remove('hidden');
+    $('deanonSection').classList.remove('hidden');
+    $('mappingSummary').textContent = state.mappings.length > 0
+        ? format(s.mappingTitle, state.mappings.length)
+        : s.noPiiFound;
+
+    const table = $('mappingTable');
+    table.innerHTML = '';
+    for (const m of state.mappings) {
+        const row = table.insertRow();
+        const code = document.createElement('code');
+        code.textContent = m.placeholder;
+        row.insertCell().append(code);
+        row.insertCell().textContent = m.original;
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = labelFor(m.category, state.lang);
+        row.insertCell().append(badge);
+    }
+}
+
+function showResult(output, mappings) {
+    state.mappings = mappings;
+    $('outputText').value = output;
+    renderMappingTable();
+}
+
+// ---- Lokales LLM ----------------------------------------------------------
+
+// Sorgt ohne Zutun des Benutzers dafür, dass die KI-Erkennung bereit wird:
+// Ollama suchen, Modell wählen, notfalls das Standardmodell herunterladen.
+async function ensureLlm({ allowPull = true } = {}) {
+    state.llmStatus = 'checking';
+    renderLlm();
+
+    const { reachable, models } = await ollama.getState();
+    if (!reachable) {
+        state.llmStatus = 'offline';
+        renderLlm();
+        return;
+    }
+
+    // Embedding-Modelle können nicht chatten.
+    const chatModels = models.filter(m => !m.toLowerCase().includes('embed'));
+    state.llmModels = chatModels;
+    const pick = chatModels.find(m => m === state.llmModel)
+        ?? chatModels.find(m => m.toLowerCase().startsWith(ollama.DEFAULT_MODEL))
+        ?? chatModels[0];
+    if (pick) {
+        state.llmModel = pick;
+        state.llmStatus = 'ready';
+        renderLlm();
+        saveLocal();
+        ollama.warmUp(pick);
+        return;
+    }
+
+    if (!allowPull) {
+        state.llmStatus = 'offline';
+        renderLlm();
+        return;
+    }
+
+    // Ollama läuft, aber kein Modell installiert → automatisch holen.
+    state.llmStatus = 'pulling';
+    state.pullPercent = 0;
+    renderLlm();
+    let ok = false;
+    try {
+        ok = await ollama.pullModel(ollama.DEFAULT_MODEL, pc => {
+            if (pc !== state.pullPercent) {
+                state.pullPercent = pc;
+                renderLlm();
+            }
+        });
+    } catch {
+        ok = false;
+    }
+    if (!ok) {
+        state.llmStatus = 'pullfailed';
+        renderLlm();
+        return;
+    }
+    await ensureLlm({ allowPull: false });
+}
+
+// ---- Aktionen -------------------------------------------------------------
+
+async function runAnonymize() {
+    state.busy = true;
+    $('anonymizeBtn').disabled = true;
+    $('anonymizeBtn').textContent = t().btnAnonymizeBusy;
+    $('llmErrorNote').classList.add('hidden');
+
+    const text = $('inputText').value;
+    const options = {
+        ...state.options,
+        language: state.lang,
+        customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean)
+    };
+
+    // Falls Ollama inzwischen gestartet wurde, ohne Neuöffnen erkennen.
+    if (state.llmEnabled && state.llmStatus === 'offline') {
+        await ensureLlm();
+    }
+
+    let llmFindings = null;
+    if (state.llmEnabled && state.llmStatus === 'ready' && state.llmModel && text.trim()) {
+        try {
+            llmFindings = await ollama.detectPii(text, state.llmModel);
+        } catch {
+            $('llmErrorNote').classList.remove('hidden');
+            state.llmStatus = 'offline';
+            renderLlm();
+        }
+    }
+
+    const result = anonymize(text, options, llmFindings);
+    showResult(result.anonymizedText, result.mappings);
+    $('restoredText').classList.add('hidden');
+    $('copyRestoredBtn').classList.add('hidden');
+    $('restoredText').value = '';
+
+    state.busy = false;
+    $('anonymizeBtn').disabled = false;
+    $('anonymizeBtn').textContent = t().btnAnonymize;
+    saveSession();
+}
+
+function runDeanonymize() {
+    const restored = deanonymize($('responseText').value, state.mappings);
+    $('restoredText').value = restored;
+    $('restoredText').classList.remove('hidden');
+    $('copyRestoredBtn').classList.remove('hidden');
+    saveSession();
+}
+
+function clearAll() {
+    $('inputText').value = '';
+    $('outputText').value = '';
+    $('responseText').value = '';
+    $('restoredText').value = '';
+    state.mappings = [];
+    $('outputSection').classList.add('hidden');
+    $('deanonSection').classList.add('hidden');
+    $('llmErrorNote').classList.add('hidden');
+    chrome.storage.session.remove(['input', 'output', 'mappings', 'response', 'restored']);
+}
+
+async function copyButton(button, textareaId) {
+    await navigator.clipboard.writeText($(textareaId).value);
+    const original = t().btnCopy;
+    button.textContent = t().copied;
+    setTimeout(() => { button.textContent = original; }, 1500);
+}
+
+// ---- Start ----------------------------------------------------------------
+
+async function main() {
+    await loadStored();
+
+    const languageSelect = $('languageSelect');
+    for (const { code, native } of LANGUAGES) {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = native;
+        languageSelect.append(option);
+    }
+    languageSelect.value = state.lang;
+    languageSelect.addEventListener('change', () => {
+        state.lang = languageSelect.value;
+        saveLocal();
+        renderTexts();
+    });
+
+    $('customTerms').value = state.customTermsText;
+    $('customTerms').addEventListener('input', () => {
+        state.customTermsText = $('customTerms').value;
+        saveLocal();
+    });
+
+    $('llmEnabled').addEventListener('change', () => {
+        state.llmEnabled = $('llmEnabled').checked;
+        saveLocal();
+        if (state.llmEnabled) {
+            ensureLlm();
+        } else {
+            renderLlm();
+        }
+    });
+    $('llmModelSelect').addEventListener('change', () => {
+        state.llmModel = $('llmModelSelect').value;
+        saveLocal();
+        ollama.warmUp(state.llmModel);
+    });
+    $('llmRecheck').addEventListener('click', () => ensureLlm());
+
+    $('anonymizeBtn').addEventListener('click', runAnonymize);
+    $('clearBtn').addEventListener('click', clearAll);
+    $('deanonymizeBtn').addEventListener('click', runDeanonymize);
+    $('copyOutputBtn').addEventListener('click', e => copyButton(e.target, 'outputText'));
+    $('copyRestoredBtn').addEventListener('click', e => copyButton(e.target, 'restoredText'));
+    $('inputText').addEventListener('input', saveSession);
+    $('responseText').addEventListener('input', saveSession);
+
+    renderTexts();
+    if (state.llmEnabled) {
+        ensureLlm();
+    }
+}
+
+main();
