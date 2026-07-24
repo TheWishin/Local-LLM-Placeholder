@@ -27,26 +27,31 @@ Deutsch, Englisch, Französisch und Italienisch verfügbar (Auswahl oben rechts)
   `[TELEPHONE_1]` (fr), `[TELEFONO_1]` (it). The de-anonymization step uses the
   session's mapping table, so the round trip always works.
 
-## 🤖 Local LLM detection (optional)
+## 🤖 Local LLM detection – zero config
 
 Patterns can't catch everything – a name without a salutation, a company name,
-an unusual identifier. For that, the app can additionally use a **local LLM via
+an unusual identifier. For that, the app additionally uses a **local LLM via
 [Ollama](https://ollama.com)** that *understands what privacy data is* and
 reports anything that could identify a person. Findings are merged with the
 pattern results (patterns win on overlaps, since they are more precise for
 structured data like IBANs).
 
+**It just works:** install [Ollama](https://ollama.com), start the app – done.
+
+- AI detection is **enabled by default** and activates itself as soon as the
+  app finds Ollama on this machine (it also re-checks when you click
+  Anonymize, so starting Ollama later is picked up without a reload).
+- If no model is installed yet, the app **downloads the default model
+  automatically** (one time, with a progress bar) and warms it up so the first
+  analysis starts fast. No terminal commands needed.
+- The start scripts (`start.sh` / `start.bat`) even launch Ollama in the
+  background if it's installed but not running.
+- Without Ollama, the app simply works with patterns only.
+
 Your text still never leaves your machine: Ollama runs entirely locally.
-If Ollama isn't running, the app simply works with patterns only.
-
-Setup:
-
-1. Install Ollama from [ollama.com](https://ollama.com)
-2. Pull a model, e.g. `ollama pull llama3.2` (any chat model works;
-   `qwen2.5:3b` or `llama3.1:8b` give better results if your machine can run them)
-3. Enable **"AI detection (local LLM)"** in the app's sidebar and pick the model
-
-Endpoint and default model can be changed in
+Any installed chat model can be picked in the sidebar (`qwen2.5:3b` or
+`llama3.1:8b` give better results than the default if your machine can run
+them). Endpoint and default model can be changed in
 `src/DataAnonymizer/appsettings.json` under `LocalLlm`.
 
 ## Workflow

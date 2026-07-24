@@ -16,6 +16,12 @@ public sealed class LocalLlmOptions
     public int TimeoutSeconds { get; set; } = 180;
 }
 
+/// <summary>Erreichbarkeit von Ollama und die installierten Modelle.</summary>
+public sealed record OllamaState(bool Reachable, IReadOnlyList<string> Models);
+
+/// <summary>Fortschritt beim automatischen Herunterladen eines Modells.</summary>
+public sealed record LlmPullProgress(string Status, int? Percent, bool IsSuccess, bool IsError);
+
 /// <summary>
 /// Spricht mit einem lokal laufenden LLM über die Ollama-API (http://localhost:11434).
 /// Das Modell versteht, was persönliche Daten sind, und findet dadurch auch PII,
@@ -30,7 +36,8 @@ public sealed class LocalLlmClient : IDisposable
     public LocalLlmClient(LocalLlmOptions? options = null)
     {
         _options = options ?? new LocalLlmOptions();
-        _http = new HttpClient
+        // Ollama läuft auf dieser Maschine – ein (Firmen-)Proxy darf nie dazwischenfunken.
+        _http = new HttpClient(new HttpClientHandler { UseProxy = false })
         {
             BaseAddress = new Uri(_options.Endpoint.TrimEnd('/')),
             Timeout = TimeSpan.FromSeconds(Math.Max(10, _options.TimeoutSeconds))
@@ -41,10 +48,10 @@ public sealed class LocalLlmClient : IDisposable
     public string DefaultModel => _options.Model;
 
     /// <summary>
-    /// Liefert die installierten Ollama-Modelle oder eine leere Liste, wenn Ollama
-    /// nicht erreichbar ist. Dient gleichzeitig als Verfügbarkeits-Check.
+    /// Prüft, ob Ollama erreichbar ist, und liefert die installierten Modelle.
+    /// Antwortet schnell (max. 3 Sekunden), damit die Oberfläche nie hängt.
     /// </summary>
-    public async Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken ct = default)
+    public async Task<OllamaState> GetStateAsync(CancellationToken ct = default)
     {
         try
         {
@@ -53,25 +60,117 @@ public sealed class LocalLlmClient : IDisposable
             using var response = await _http.GetAsync("/api/tags", quickTimeout.Token);
             if (!response.IsSuccessStatusCode)
             {
-                return Array.Empty<string>();
+                return new OllamaState(false, Array.Empty<string>());
             }
 
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(quickTimeout.Token));
             if (!doc.RootElement.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
             {
-                return Array.Empty<string>();
+                return new OllamaState(true, Array.Empty<string>());
             }
 
-            return models.EnumerateArray()
+            var names = models.EnumerateArray()
                 .Select(m => m.TryGetProperty("name", out var name) ? name.GetString() : null)
                 .Where(n => !string.IsNullOrWhiteSpace(n))
                 .Select(n => n!)
                 .ToList();
+            return new OllamaState(true, names);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or JsonException)
         {
-            return Array.Empty<string>();
+            return new OllamaState(false, Array.Empty<string>());
         }
+    }
+
+    /// <summary>
+    /// Lädt ein Modell über Ollama herunter (einmalig, mehrere GB). Meldet den
+    /// Fortschritt und liefert true, wenn das Modell danach bereitsteht.
+    /// </summary>
+    public async Task<bool> PullModelAsync(string model, IProgress<LlmPullProgress>? progress = null, CancellationToken ct = default)
+    {
+        // "name" zusätzlich zu "model" für ältere Ollama-Versionen.
+        var body = JsonSerializer.Serialize(new { model, name = model, stream = true });
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/pull")
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json")
+        };
+
+        // ResponseHeadersRead: der Download dauert länger als jedes Request-Timeout.
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return false;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+        var success = false;
+        string? line;
+        while ((line = await reader.ReadLineAsync(ct)) is not null)
+        {
+            var p = ParsePullLine(line);
+            if (p is null)
+            {
+                continue;
+            }
+            if (p.IsError)
+            {
+                return false;
+            }
+            progress?.Report(p);
+            success |= p.IsSuccess;
+        }
+        return success;
+    }
+
+    /// <summary>Eine Zeile des NDJSON-Fortschritts von /api/pull.</summary>
+    public static LlmPullProgress? ParsePullLine(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return null;
+        }
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+            if (root.TryGetProperty("error", out var error))
+            {
+                return new LlmPullProgress(error.GetString() ?? "error", null, IsSuccess: false, IsError: true);
+            }
+
+            var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? string.Empty : string.Empty;
+            int? percent = null;
+            if (root.TryGetProperty("total", out var total) && root.TryGetProperty("completed", out var completed)
+                && total.TryGetInt64(out var t) && completed.TryGetInt64(out var c) && t > 0)
+            {
+                percent = (int)Math.Clamp(c * 100 / t, 0, 100);
+            }
+            return new LlmPullProgress(status, percent, string.Equals(status, "success", StringComparison.OrdinalIgnoreCase), IsError: false);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Lädt das Modell in den Speicher, damit die erste Analyse nicht warten muss.
+    /// Die (leere) Antwort ist egal – wichtig ist nur das Laden.
+    /// </summary>
+    public async Task WarmUpAsync(string? model = null, CancellationToken ct = default)
+    {
+        var body = JsonSerializer.Serialize(new
+        {
+            model = string.IsNullOrWhiteSpace(model) ? _options.Model : model,
+            keep_alive = "15m"
+        });
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+        using var response = await _http.PostAsync("/api/generate", content, ct);
     }
 
     /// <summary>

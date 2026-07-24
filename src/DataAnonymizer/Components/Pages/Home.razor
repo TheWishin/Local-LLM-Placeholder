@@ -146,9 +146,21 @@
                                 }
                             </select>
                             break;
+                        case LlmStatus.Pulling:
+                            <p class="small mb-2">@string.Format(Loc.T.LlmStatusPulling, Llm.DefaultModel, _pullPercent)</p>
+                            <div class="progress" role="progressbar" aria-valuenow="@_pullPercent" aria-valuemin="0" aria-valuemax="100" style="height: 6px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: @(_pullPercent)%"></div>
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">@Loc.T.LlmPullNote</p>
+                            break;
+                        case LlmStatus.PullFailed:
+                            <p class="small text-danger mb-2">@string.Format(Loc.T.LlmPullFailed, Llm.DefaultModel)</p>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="CheckLlmAsync">@Loc.T.BtnRecheck</button>
+                            break;
                         case LlmStatus.Offline:
                             <p class="small text-warning-emphasis mb-1">@Loc.T.LlmStatusOffline</p>
-                            <p class="text-muted small mb-0">@Loc.T.LlmOfflineHelp</p>
+                            <p class="text-muted small mb-2">@Loc.T.LlmOfflineHelp</p>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="CheckLlmAsync">@Loc.T.BtnRecheck</button>
                             break;
                     }
                 }
@@ -187,7 +199,7 @@
 </div>
 
 @code {
-    private enum LlmStatus { Checking, Ready, Offline }
+    private enum LlmStatus { Checking, Ready, Offline, Pulling, PullFailed }
 
     private string _inputText = string.Empty;
     private string _responseText = string.Empty;
@@ -205,6 +217,7 @@
     private LlmStatus _llmStatus = LlmStatus.Checking;
     private IReadOnlyList<string> _llmModels = Array.Empty<string>();
     private string _llmModel = string.Empty;
+    private int _pullPercent;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -221,7 +234,8 @@
             Loc.Set(LocalizationService.FromCode(_langCode));
 
             _llmModel = await JS.InvokeAsync<string?>("appStorage.get", "llmModel") ?? string.Empty;
-            _llmEnabled = await JS.InvokeAsync<string?>("appStorage.get", "llmEnabled") == "1";
+            // KI-Erkennung ist standardmässig an – aus nur, wenn der Benutzer sie abgeschaltet hat.
+            _llmEnabled = await JS.InvokeAsync<string?>("appStorage.get", "llmEnabled") != "0";
             StateHasChanged();
 
             if (_llmEnabled)
@@ -251,23 +265,93 @@
     {
         _llmStatus = LlmStatus.Checking;
         StateHasChanged();
+        await EnsureLlmAsync();
+        StateHasChanged();
+    }
 
-        var models = await Llm.ListModelsAsync();
-        _llmModels = models;
-        if (models.Count == 0)
+    /// <summary>
+    /// Sorgt dafür, dass die KI-Erkennung ohne Zutun des Benutzers einsatzbereit wird:
+    /// Ollama suchen, ein brauchbares Modell wählen – und falls keines installiert ist,
+    /// das Standardmodell im Hintergrund herunterladen.
+    /// </summary>
+    private async Task EnsureLlmAsync()
+    {
+        var state = await Llm.GetStateAsync();
+        if (!state.Reachable)
         {
             _llmStatus = LlmStatus.Offline;
+            return;
         }
-        else
+
+        // Embedding-Modelle können nicht chatten und kommen nicht in Frage.
+        var chatModels = state.Models.Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase)).ToList();
+        _llmModels = chatModels;
+        var pick = chatModels.FirstOrDefault(m => m == _llmModel)
+                ?? chatModels.FirstOrDefault(m => m.StartsWith(Llm.DefaultModel, StringComparison.OrdinalIgnoreCase))
+                ?? chatModels.FirstOrDefault();
+        if (pick is not null)
         {
+            _llmModel = pick;
             _llmStatus = LlmStatus.Ready;
-            if (!models.Contains(_llmModel))
-            {
-                // Gespeichertes Modell nicht (mehr) installiert → Standard oder erstes Modell.
-                _llmModel = models.FirstOrDefault(m => m.StartsWith(Llm.DefaultModel, StringComparison.OrdinalIgnoreCase)) ?? models[0];
-            }
+            _ = WarmUpQuietlyAsync(pick);
+            return;
         }
-        StateHasChanged();
+
+        // Ollama läuft, aber kein Modell installiert → Standardmodell automatisch holen.
+        _ = PullDefaultModelAsync();
+    }
+
+    private async Task PullDefaultModelAsync()
+    {
+        _llmStatus = LlmStatus.Pulling;
+        _pullPercent = 0;
+        await InvokeAsync(StateHasChanged);
+
+        var progress = new Progress<LlmPullProgress>(p =>
+        {
+            if (p.Percent is int pc && pc != _pullPercent)
+            {
+                _pullPercent = pc;
+                _ = InvokeAsync(StateHasChanged);
+            }
+        });
+
+        bool ok;
+        try
+        {
+            ok = await Llm.PullModelAsync(Llm.DefaultModel, progress);
+        }
+        catch
+        {
+            ok = false;
+        }
+
+        if (!ok)
+        {
+            _llmStatus = LlmStatus.PullFailed;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var state = await Llm.GetStateAsync();
+        _llmModels = state.Models.Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase)).ToList();
+        _llmModel = _llmModels.FirstOrDefault(m => m.StartsWith(Llm.DefaultModel, StringComparison.OrdinalIgnoreCase))
+                 ?? Llm.DefaultModel;
+        _llmStatus = LlmStatus.Ready;
+        await InvokeAsync(StateHasChanged);
+        _ = WarmUpQuietlyAsync(_llmModel);
+    }
+
+    private async Task WarmUpQuietlyAsync(string model)
+    {
+        try
+        {
+            await Llm.WarmUpAsync(model);
+        }
+        catch
+        {
+            // Nur eine Beschleunigung – Fehler hier sind egal.
+        }
     }
 
     private async Task SaveLlmModelAsync()
@@ -284,6 +368,12 @@
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(t => new CustomTerm(t))
             .ToList();
+
+        // Falls Ollama inzwischen gestartet wurde, ohne Neuladen der Seite erkennen.
+        if (_llmEnabled && _llmStatus == LlmStatus.Offline)
+        {
+            await EnsureLlmAsync();
+        }
 
         IReadOnlyList<LlmEntity>? llmFindings = null;
         if (_llmEnabled && _llmStatus == LlmStatus.Ready && _llmModel.Length > 0 && !string.IsNullOrWhiteSpace(_inputText))

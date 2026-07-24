@@ -60,6 +60,10 @@ public sealed class UiText
     public required string LlmModelLabel { get; init; }
     public required string LlmAnalyzing { get; init; }
     public required string LlmError { get; init; }
+    public required string LlmStatusPulling { get; init; }    // {0} = Modell, {1} = Prozent
+    public required string LlmPullNote { get; init; }
+    public required string LlmPullFailed { get; init; }       // {0} = Modell
+    public required string BtnRecheck { get; init; }
 }
 
 /// <summary>Hält die aktuelle Sprache einer Browser-Sitzung.</summary>
@@ -157,10 +161,14 @@ public static class UiStrings
         LlmStatusChecking = "Prüfe Ollama …",
         LlmStatusReady = "✅ Ollama erreichbar",
         LlmStatusOffline = "⚠️ Ollama nicht erreichbar",
-        LlmOfflineHelp = "Ollama von ollama.com installieren, dann im Terminal „ollama pull llama3.2“ ausführen und Ollama starten.",
+        LlmOfflineHelp = "Ollama von ollama.com installieren und starten – den Rest erledigt die App automatisch (das Modell wird selbständig heruntergeladen).",
         LlmModelLabel = "Modell",
         LlmAnalyzing = "Das lokale Modell analysiert den Text – das kann je nach Rechner eine Weile dauern.",
-        LlmError = "KI-Erkennung fehlgeschlagen – das Ergebnis basiert nur auf den Erkennungsregeln."
+        LlmError = "KI-Erkennung fehlgeschlagen – das Ergebnis basiert nur auf den Erkennungsregeln.",
+        LlmStatusPulling = "⬇️ Modell {0} wird heruntergeladen … {1} %",
+        LlmPullNote = "Passiert nur einmal – danach ist die KI-Erkennung sofort einsatzbereit.",
+        LlmPullFailed = "Automatischer Download fehlgeschlagen – im Terminal „ollama pull {0}“ ausführen.",
+        BtnRecheck = "↻ Erneut prüfen"
     };
 
     private static readonly UiText En = new()
@@ -210,10 +218,14 @@ public static class UiStrings
         LlmStatusChecking = "Checking Ollama …",
         LlmStatusReady = "✅ Ollama reachable",
         LlmStatusOffline = "⚠️ Ollama not reachable",
-        LlmOfflineHelp = "Install Ollama from ollama.com, then run “ollama pull llama3.2” in a terminal and start Ollama.",
+        LlmOfflineHelp = "Install Ollama from ollama.com and start it – the app does the rest automatically (the model is downloaded on its own).",
         LlmModelLabel = "Model",
         LlmAnalyzing = "The local model is analyzing the text – depending on your machine this can take a while.",
-        LlmError = "AI detection failed – the result is based on the detection rules only."
+        LlmError = "AI detection failed – the result is based on the detection rules only.",
+        LlmStatusPulling = "⬇️ Downloading model {0} … {1}%",
+        LlmPullNote = "This happens only once – afterwards AI detection is ready right away.",
+        LlmPullFailed = "Automatic download failed – run “ollama pull {0}” in a terminal.",
+        BtnRecheck = "↻ Check again"
     };
 
     private static readonly UiText Fr = new()
@@ -263,10 +275,14 @@ public static class UiStrings
         LlmStatusChecking = "Vérification d'Ollama …",
         LlmStatusReady = "✅ Ollama accessible",
         LlmStatusOffline = "⚠️ Ollama inaccessible",
-        LlmOfflineHelp = "Installez Ollama depuis ollama.com, puis exécutez « ollama pull llama3.2 » dans un terminal et démarrez Ollama.",
+        LlmOfflineHelp = "Installez Ollama depuis ollama.com et démarrez-le – l'application s'occupe du reste (le modèle est téléchargé automatiquement).",
         LlmModelLabel = "Modèle",
         LlmAnalyzing = "Le modèle local analyse le texte – cela peut prendre un moment selon votre machine.",
-        LlmError = "La détection IA a échoué – le résultat repose uniquement sur les règles de détection."
+        LlmError = "La détection IA a échoué – le résultat repose uniquement sur les règles de détection.",
+        LlmStatusPulling = "⬇️ Téléchargement du modèle {0} … {1} %",
+        LlmPullNote = "Cette étape n'a lieu qu'une seule fois – ensuite la détection IA est immédiatement prête.",
+        LlmPullFailed = "Le téléchargement automatique a échoué – exécutez « ollama pull {0} » dans un terminal.",
+        BtnRecheck = "↻ Revérifier"
     };
 
     private static readonly UiText It = new()
@@ -316,9 +332,13 @@ public static class UiStrings
         LlmStatusChecking = "Verifica di Ollama …",
         LlmStatusReady = "✅ Ollama raggiungibile",
         LlmStatusOffline = "⚠️ Ollama non raggiungibile",
-        LlmOfflineHelp = "Installa Ollama da ollama.com, poi esegui «ollama pull llama3.2» in un terminale e avvia Ollama.",
+        LlmOfflineHelp = "Installa Ollama da ollama.com e avvialo – al resto pensa l'app (il modello viene scaricato automaticamente).",
         LlmModelLabel = "Modello",
         LlmAnalyzing = "Il modello locale sta analizzando il testo – a seconda del computer può richiedere un po' di tempo.",
-        LlmError = "Riconoscimento IA non riuscito – il risultato si basa solo sulle regole di riconoscimento."
+        LlmError = "Riconoscimento IA non riuscito – il risultato si basa solo sulle regole di riconoscimento.",
+        LlmStatusPulling = "⬇️ Download del modello {0} … {1}%",
+        LlmPullNote = "Succede solo una volta – dopo il riconoscimento IA è subito pronto.",
+        LlmPullFailed = "Download automatico non riuscito – esegui «ollama pull {0}» in un terminale.",
+        BtnRecheck = "↻ Ricontrolla"
     };
 }

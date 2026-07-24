@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using DataAnonymizer.Services;
 
 var svc = new AnonymizerService();
@@ -185,6 +188,66 @@ Check("Parse: Unbekannte Kategorie wird Begriff",
     LocalLlmClient.ParseEntities("""{"entities":[{"text":"X1","category":"whatever"}]}""").Single().Category == PiiCategory.Begriff);
 Check("Parse: Müll ergibt leere Liste", LocalLlmClient.ParseEntities("no json here").Count == 0);
 Check("Parse: Kaputtes JSON ergibt leere Liste", LocalLlmClient.ParseEntities("{\"entities\":[{").Count == 0);
+
+// --- Fortschritts-Zeilen des Modell-Downloads (/api/pull) ---
+var pullLine = LocalLlmClient.ParsePullLine("""{"status":"downloading","total":1000,"completed":250}""");
+Check("Pull: Prozent berechnet", pullLine is { Percent: 25, IsSuccess: false, IsError: false });
+Check("Pull: success erkannt", LocalLlmClient.ParsePullLine("""{"status":"success"}""") is { IsSuccess: true });
+Check("Pull: Fehler erkannt", LocalLlmClient.ParsePullLine("""{"error":"model not found"}""") is { IsError: true });
+Check("Pull: Müll ergibt null", LocalLlmClient.ParsePullLine("not json") is null);
+
+// --- LocalLlmClient gegen einen Fake-Ollama-Server ---
+static int GetFreePort()
+{
+    var probe = new TcpListener(IPAddress.Loopback, 0);
+    probe.Start();
+    var port = ((IPEndPoint)probe.LocalEndpoint).Port;
+    probe.Stop();
+    return port;
+}
+
+var fakePort = GetFreePort();
+var listener = new HttpListener();
+listener.Prefixes.Add($"http://127.0.0.1:{fakePort}/");
+listener.Start();
+var serverTask = Task.Run(async () =>
+{
+    while (listener.IsListening)
+    {
+        HttpListenerContext ctx;
+        try { ctx = await listener.GetContextAsync(); }
+        catch { break; }
+
+        var body = ctx.Request.Url!.AbsolutePath switch
+        {
+            "/api/tags" => """{"models":[{"name":"llama3.2:latest"},{"name":"nomic-embed-text:latest"}]}""",
+            "/api/chat" => """{"message":{"role":"assistant","content":"{\"entities\":[{\"text\":\"Max Muster\",\"category\":\"name\"}]}"}}""",
+            _ => "{}"
+        };
+        var bytes = Encoding.UTF8.GetBytes(body);
+        ctx.Response.ContentType = "application/json";
+        ctx.Response.ContentLength64 = bytes.Length;
+        await ctx.Response.OutputStream.WriteAsync(bytes);
+        ctx.Response.Close();
+    }
+});
+
+using (var fakeClient = new LocalLlmClient(new LocalLlmOptions { Endpoint = $"http://127.0.0.1:{fakePort}" }))
+{
+    var state = await fakeClient.GetStateAsync();
+    Check("Ollama-State: erreichbar inkl. Modellliste", state.Reachable && state.Models.Contains("llama3.2:latest"));
+
+    var detected = await fakeClient.DetectPiiAsync("Max Muster wohnt hier.", "llama3.2:latest");
+    Check("DetectPii über HTTP", detected.Count == 1 && detected[0] == new LlmEntity("Max Muster", PiiCategory.Name));
+}
+listener.Stop();
+await serverTask;
+
+using (var offlineClient = new LocalLlmClient(new LocalLlmOptions { Endpoint = $"http://127.0.0.1:{GetFreePort()}" }))
+{
+    var offlineState = await offlineClient.GetStateAsync();
+    Check("Ollama-State: offline erkannt", offlineState is { Reachable: false, Models.Count: 0 });
+}
 
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "ALLE TESTS BESTANDEN" : $"{failures} TEST(S) FEHLGESCHLAGEN");
