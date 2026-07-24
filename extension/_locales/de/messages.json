@@ -1,4 +1,23 @@
 {
-    "extName": { "message": "Daten-Anonymisierer (lokal)" },
-    "extDescription": { "message": "Ersetzt persönliche Daten durch Platzhalter, bevor du Text in ein KI-Tool einfügst – zu 100 % lokal, optional mit lokalem LLM via Ollama." }
+    "extName": {
+        "message": "Daten-Anonymisierer (lokal)"
+    },
+    "extDescription": {
+        "message": "Ersetzt persönliche Daten durch Platzhalter, bevor du Text in ein KI-Tool einfügst – zu 100 % lokal, optional mit lokalem LLM via Ollama."
+    },
+    "ctxAnonymize": {
+        "message": "🔒 Auswahl anonymisieren (kopieren)"
+    },
+    "ctxDeanonymize": {
+        "message": "🔓 Auswahl zurückübersetzen (kopieren)"
+    },
+    "notifyAnonymized": {
+        "message": "Anonymisiert & kopiert"
+    },
+    "notifyRestored": {
+        "message": "Zurückübersetzt & kopiert"
+    },
+    "notifyNoMapping": {
+        "message": "Noch keine Zuordnung gespeichert - zuerst etwas anonymisieren."
+    }
 }

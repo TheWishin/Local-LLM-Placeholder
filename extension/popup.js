@@ -229,6 +229,18 @@ function renderMappingTable() {
     }
     renderChips();
     renderCatSummary();
+    renderSensitiveWarning();
+}
+
+function renderSensitiveWarning() {
+    const el = $('sensitiveWarning');
+    const n = state.mappings.filter(m => m.category === 'sensitive').length;
+    if (n > 0) {
+        el.textContent = format(t().sensitiveWarning, n);
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
 }
 
 function renderCatSummary() {

@@ -91,6 +91,10 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    @if (SensitiveCount > 0)
+                    {
+                        <div class="alert alert-danger py-2 mb-3">@string.Format(Loc.T.SensitiveWarning, SensitiveCount)</div>
+                    }
                     <textarea class="form-control font-monospace bg-light" rows="10" readonly>@_result.AnonymizedText</textarea>
 
                     @if (_result.Mappings.Count > 0)
@@ -480,6 +484,9 @@
         .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+
+    /// <summary>Anzahl ersetzter besonders schützenswerter Angaben (revDSG).</summary>
+    private int SensitiveCount => _result?.Mappings.Count(m => m.Category == PiiCategory.Sensitiv) ?? 0;
 
     /// <summary>Anzahl ersetzter Werte je Kategorie (für die Zusammenfassung/Badges).</summary>
     private IReadOnlyList<(PiiCategory Category, int Count)> CategoryCounts =>

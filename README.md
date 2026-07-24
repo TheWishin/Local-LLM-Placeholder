@@ -52,6 +52,14 @@ The app opens with a short **"How it works"** strip (1 Anonymize → 2 Use in yo
 AI tool → 3 Translate back). Everything runs 100% locally; the optional AI
 (Ollama) does too.
 
+**Right-click anywhere:** select text on any web page (e.g. in a ChatGPT or
+Claude input box), right-click, and choose **"🔒 Anonymize selection (copy)"** –
+the anonymized text is put on your clipboard, ready to paste back. Later,
+**"🔓 Restore selection (copy)"** turns the AI's answer back into the real
+values. A notification tells you how many values were replaced (and warns you if
+any special-category data was involved). This uses fast pattern detection and
+shares its mapping with the popup, so the two work together.
+
 ## Built for Swiss data protection (revDSG / nFADP)
 
 The tool is designed to help you work with personal data in line with the

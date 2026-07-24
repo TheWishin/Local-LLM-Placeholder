@@ -1,4 +1,23 @@
 {
-    "extName": { "message": "Data Anonymizer (local)" },
-    "extDescription": { "message": "Replaces personal data with placeholders before you paste text into an AI tool - 100% locally, optionally with a local LLM via Ollama." }
+    "extName": {
+        "message": "Data Anonymizer (local)"
+    },
+    "extDescription": {
+        "message": "Replaces personal data with placeholders before you paste text into an AI tool - 100% locally, optionally with a local LLM via Ollama."
+    },
+    "ctxAnonymize": {
+        "message": "🔒 Anonymize selection (copy)"
+    },
+    "ctxDeanonymize": {
+        "message": "🔓 Restore selection (copy)"
+    },
+    "notifyAnonymized": {
+        "message": "Anonymized & copied"
+    },
+    "notifyRestored": {
+        "message": "Restored & copied"
+    },
+    "notifyNoMapping": {
+        "message": "No saved mapping yet - anonymize something first."
+    }
 }

@@ -37,6 +37,7 @@ public sealed class UiText
     public required string ThCategory { get; init; }
     public required string MappingNote { get; init; }
     public required string NoPiiFound { get; init; }
+    public required string SensitiveWarning { get; init; }   // {0} = Anzahl
     public required string MappingLoadedNote { get; init; }   // {0} = Anzahl
     public required string BtnExportMapping { get; init; }
     public required string BtnImportMapping { get; init; }
@@ -171,6 +172,7 @@ public static class UiStrings
         ThCategory = "Kategorie",
         MappingNote = "Die Tabelle wird lokal in diesem Browser gespeichert, bis du sie löschst – so kannst du Antworten oder Skripte auch später noch zurückübersetzen.",
         NoPiiFound = "Keine persönlichen Daten gefunden.",
+        SensitiveWarning = "⚠️ Achtung: {0} besonders schützenswerte Angabe(n) erkannt und ersetzt (revDSG). Bitte besonders sorgfältig prüfen.",
         MappingLoadedNote = "Gespeicherte Zuordnung geladen ({0} Einträge) – Antwort oder Skript unten einfügen und zurückersetzen.",
         BtnExportMapping = "⬇ Zuordnung exportieren",
         BtnImportMapping = "⬆ Zuordnung importieren",
@@ -252,6 +254,7 @@ public static class UiStrings
         ThCategory = "Category",
         MappingNote = "The table is stored locally in this browser until you delete it – so you can translate answers or scripts back later, too.",
         NoPiiFound = "No personal data found.",
+        SensitiveWarning = "⚠️ Note: {0} item(s) of special-category data detected and replaced (revDSG). Please review with extra care.",
         MappingLoadedNote = "Stored mapping loaded ({0} entries) – paste the answer or script below and restore the values.",
         BtnExportMapping = "⬇ Export mapping",
         BtnImportMapping = "⬆ Import mapping",
@@ -333,6 +336,7 @@ public static class UiStrings
         ThCategory = "Catégorie",
         MappingNote = "La table est enregistrée localement dans ce navigateur jusqu'à sa suppression – vous pouvez donc retraduire des réponses ou des scripts plus tard.",
         NoPiiFound = "Aucune donnée personnelle trouvée.",
+        SensitiveWarning = "⚠️ Attention : {0} donnée(s) sensible(s) détectée(s) et remplacée(s) (nLPD). Veuillez vérifier avec un soin particulier.",
         MappingLoadedNote = "Table de correspondance chargée ({0} entrées) – collez la réponse ou le script ci-dessous et restaurez les valeurs.",
         BtnExportMapping = "⬇ Exporter la table",
         BtnImportMapping = "⬆ Importer la table",
@@ -414,6 +418,7 @@ public static class UiStrings
         ThCategory = "Categoria",
         MappingNote = "La tabella viene salvata localmente in questo browser finché non la elimini – così puoi ritradurre risposte o script anche in seguito.",
         NoPiiFound = "Nessun dato personale trovato.",
+        SensitiveWarning = "⚠️ Attenzione: {0} dato/i sensibile/i rilevato/i e sostituito/i (revDSG). Verifica con particolare cura.",
         MappingLoadedNote = "Tabella di corrispondenza caricata ({0} voci) – incolla sotto la risposta o lo script e ripristina i valori.",
         BtnExportMapping = "⬇ Esporta tabella",
         BtnImportMapping = "⬆ Importa tabella",

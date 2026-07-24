@@ -1,4 +1,23 @@
 {
-    "extName": { "message": "Anonymiseur de données (local)" },
-    "extDescription": { "message": "Remplace les données personnelles par des variables avant de coller un texte dans un outil d'IA - 100 % local, avec en option un LLM local via Ollama." }
+    "extName": {
+        "message": "Anonymiseur de données (local)"
+    },
+    "extDescription": {
+        "message": "Remplace les données personnelles par des variables avant de coller un texte dans un outil d'IA - 100 % local, avec en option un LLM local via Ollama."
+    },
+    "ctxAnonymize": {
+        "message": "🔒 Anonymiser la sélection (copier)"
+    },
+    "ctxDeanonymize": {
+        "message": "🔓 Restaurer la sélection (copier)"
+    },
+    "notifyAnonymized": {
+        "message": "Anonymisé et copié"
+    },
+    "notifyRestored": {
+        "message": "Restauré et copié"
+    },
+    "notifyNoMapping": {
+        "message": "Aucune table enregistrée - anonymisez d'abord un texte."
+    }
 }

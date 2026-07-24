@@ -199,6 +199,21 @@ check('Parse: Unbekannte Kategorie wird term', parseEntities('{"entities":[{"tex
 check('Parse: Müll ergibt leere Liste', parseEntities('no json here').length === 0);
 check('Parse: Kaputtes JSON ergibt leere Liste', parseEntities('{"entities":[{').length === 0);
 
+// --- Kontextmenü-Ablauf (wie background.js: Muster-Anonymisierung + Rundlauf) ---
+const ctxOptions = {
+    ...defaultOptions(),
+    language: 'de',
+    customTerms: ['Muster AG'],
+    allowedTerms: []
+};
+const ctxSelection = 'Herr Max Muster, max.muster@example.ch, Muster AG, Server 10.0.0.5.';
+const ctxResult = anonymize(ctxSelection, ctxOptions);
+check('Kontextmenü: Auswahl wird anonymisiert', !ctxResult.anonymizedText.includes('max.muster@example.ch') && ctxResult.mappings.length >= 3);
+check('Kontextmenü: eigener Begriff greift', !ctxResult.anonymizedText.includes('Muster AG'));
+// De-Anonymisieren mit der gespeicherten Zuordnung (wie "Auswahl zurückübersetzen").
+check('Kontextmenü: Rundlauf mit gespeicherter Zuordnung',
+    deanonymize(ctxResult.anonymizedText, ctxResult.mappings) === ctxSelection);
+
 console.log();
 console.log(failures === 0 ? 'ALLE TESTS BESTANDEN' : `${failures} TEST(S) FEHLGESCHLAGEN`);
 process.exit(failures === 0 ? 0 : 1);
