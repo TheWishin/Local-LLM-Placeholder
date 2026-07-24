@@ -24,6 +24,10 @@ public sealed class UiText
     public required string ThCategory { get; init; }
     public required string MappingNote { get; init; }
     public required string NoPiiFound { get; init; }
+    public required string MappingLoadedNote { get; init; }   // {0} = Anzahl
+    public required string BtnExportMapping { get; init; }
+    public required string BtnImportMapping { get; init; }
+    public required string BtnDeleteMapping { get; init; }
 
     public required string CardDeanonymize { get; init; }
     public required string DeanonHint { get; init; }
@@ -137,8 +141,12 @@ public static class UiStrings
         ThPlaceholder = "Platzhalter",
         ThOriginal = "Originalwert",
         ThCategory = "Kategorie",
-        MappingNote = "Die Tabelle bleibt nur in dieser Browser-Sitzung im Speicher und wird nirgends abgelegt.",
+        MappingNote = "Die Tabelle wird lokal in diesem Browser gespeichert, bis du sie löschst – so kannst du Antworten oder Skripte auch später noch zurückübersetzen.",
         NoPiiFound = "Keine persönlichen Daten gefunden.",
+        MappingLoadedNote = "Gespeicherte Zuordnung geladen ({0} Einträge) – Antwort oder Skript unten einfügen und zurückersetzen.",
+        BtnExportMapping = "⬇ Zuordnung exportieren",
+        BtnImportMapping = "⬆ Zuordnung importieren",
+        BtnDeleteMapping = "🗑 Zuordnung löschen",
         CardDeanonymize = "3️⃣ Antwort de-anonymisieren (Platzhalter zurückersetzen)",
         DeanonHint = "Antwort von Claude Code hier einfügen – die Platzhalter werden wieder durch die Originalwerte ersetzt.",
         ResponsePlaceholder = "Antwort mit Platzhaltern wie [NAME_1] hier einfügen …",
@@ -199,8 +207,12 @@ public static class UiStrings
         ThPlaceholder = "Placeholder",
         ThOriginal = "Original value",
         ThCategory = "Category",
-        MappingNote = "The table only lives in the memory of this browser session and is never stored anywhere.",
+        MappingNote = "The table is stored locally in this browser until you delete it – so you can translate answers or scripts back later, too.",
         NoPiiFound = "No personal data found.",
+        MappingLoadedNote = "Stored mapping loaded ({0} entries) – paste the answer or script below and restore the values.",
+        BtnExportMapping = "⬇ Export mapping",
+        BtnImportMapping = "⬆ Import mapping",
+        BtnDeleteMapping = "🗑 Delete mapping",
         CardDeanonymize = "3️⃣ De-anonymize the answer (restore placeholders)",
         DeanonHint = "Paste the answer from Claude Code here – the placeholders will be replaced with the original values again.",
         ResponsePlaceholder = "Paste the answer containing placeholders like [NAME_1] here …",
@@ -261,8 +273,12 @@ public static class UiStrings
         ThPlaceholder = "Variable",
         ThOriginal = "Valeur originale",
         ThCategory = "Catégorie",
-        MappingNote = "La table ne réside que dans la mémoire de cette session du navigateur et n'est enregistrée nulle part.",
+        MappingNote = "La table est enregistrée localement dans ce navigateur jusqu'à sa suppression – vous pouvez donc retraduire des réponses ou des scripts plus tard.",
         NoPiiFound = "Aucune donnée personnelle trouvée.",
+        MappingLoadedNote = "Table de correspondance chargée ({0} entrées) – collez la réponse ou le script ci-dessous et restaurez les valeurs.",
+        BtnExportMapping = "⬇ Exporter la table",
+        BtnImportMapping = "⬆ Importer la table",
+        BtnDeleteMapping = "🗑 Supprimer la table",
         CardDeanonymize = "3️⃣ Dé-anonymiser la réponse (restaurer les valeurs)",
         DeanonHint = "Collez ici la réponse de Claude Code – les variables seront remplacées par les valeurs originales.",
         ResponsePlaceholder = "Collez ici la réponse contenant des variables comme [NOM_1] …",
@@ -323,8 +339,12 @@ public static class UiStrings
         ThPlaceholder = "Segnaposto",
         ThOriginal = "Valore originale",
         ThCategory = "Categoria",
-        MappingNote = "La tabella rimane solo nella memoria di questa sessione del browser e non viene salvata da nessuna parte.",
+        MappingNote = "La tabella viene salvata localmente in questo browser finché non la elimini – così puoi ritradurre risposte o script anche in seguito.",
         NoPiiFound = "Nessun dato personale trovato.",
+        MappingLoadedNote = "Tabella di corrispondenza caricata ({0} voci) – incolla sotto la risposta o lo script e ripristina i valori.",
+        BtnExportMapping = "⬇ Esporta tabella",
+        BtnImportMapping = "⬆ Importa tabella",
+        BtnDeleteMapping = "🗑 Elimina tabella",
         CardDeanonymize = "3️⃣ De-anonimizzare la risposta (ripristinare i valori)",
         DeanonHint = "Incolla qui la risposta di Claude Code – i segnaposto verranno sostituiti di nuovo con i valori originali.",
         ResponsePlaceholder = "Incolla qui la risposta con segnaposto come [NOME_1] …",

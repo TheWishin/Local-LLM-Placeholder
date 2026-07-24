@@ -30,6 +30,49 @@ public enum PiiCategory
 /// <summary>Eine Zuordnung Platzhalter → Originalwert.</summary>
 public sealed record MappingEntry(string Placeholder, string Original, PiiCategory Category);
 
+/// <summary>
+/// Sprachneutrale IDs für den Export/Import von Zuordnungstabellen – identisch
+/// mit den Kategorie-Schlüsseln der Browser-Erweiterung (extension/engine.js),
+/// damit Dateien zwischen App und Erweiterung austauschbar sind.
+/// </summary>
+public static class PiiCategoryIds
+{
+    public static string ToId(PiiCategory category) => category switch
+    {
+        PiiCategory.Begriff => "term",
+        PiiCategory.Email => "email",
+        PiiCategory.Iban => "iban",
+        PiiCategory.Ahv => "ssn",
+        PiiCategory.Kreditkarte => "card",
+        PiiCategory.Referenz => "ref",
+        PiiCategory.Telefon => "phone",
+        PiiCategory.Datum => "date",
+        PiiCategory.Adresse => "address",
+        PiiCategory.Ort => "city",
+        PiiCategory.Kennzeichen => "plate",
+        PiiCategory.Name => "name",
+        PiiCategory.Organisation => "org",
+        _ => "term"
+    };
+
+    public static PiiCategory FromId(string? id) => id switch
+    {
+        "email" => PiiCategory.Email,
+        "iban" => PiiCategory.Iban,
+        "ssn" => PiiCategory.Ahv,
+        "card" => PiiCategory.Kreditkarte,
+        "ref" => PiiCategory.Referenz,
+        "phone" => PiiCategory.Telefon,
+        "date" => PiiCategory.Datum,
+        "address" => PiiCategory.Adresse,
+        "city" => PiiCategory.Ort,
+        "plate" => PiiCategory.Kennzeichen,
+        "name" => PiiCategory.Name,
+        "org" => PiiCategory.Organisation,
+        _ => PiiCategory.Begriff
+    };
+}
+
 /// <summary>Ein vom lokalen LLM gefundener Textabschnitt mit persönlichen Daten.</summary>
 public sealed record LlmEntity(string Text, PiiCategory Category);
 

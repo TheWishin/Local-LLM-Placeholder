@@ -148,6 +148,25 @@ const allowLlm = anonymize('Max Muster arbeitet bei der Contoso AG.',
     [{ text: 'Max Muster', category: 'name' }, { text: 'Contoso AG', category: 'org' }]);
 check('Allow: Gilt auch für LLM-Funde', allowLlm.anonymizedText.includes('Contoso AG') && !allowLlm.anonymizedText.includes('Max Muster'));
 
+// --- SQL-Skript-Rundlauf: Platzhalter tolerant zurückersetzen ---
+const sqlMappings = [
+    { placeholder: '[NAME_1]', original: 'Max Muster', category: 'name' },
+    { placeholder: '[EMAIL_1]', original: 'max.muster@example.ch', category: 'email' },
+    { placeholder: '[REFERENZ_1]', original: 'P-2023/4711', category: 'ref' },
+    { placeholder: '[NAME_11]', original: 'Anna Andere', category: 'name' }
+];
+const sqlScript = `INSERT INTO customers (name, email, policy_no)
+VALUES ('[NAME_1]', '[ email_1 ]', '[Referenz_1]');
+UPDATE customers SET name = '[NAME_11]' WHERE email = '[EMAIL_1]';`;
+const sqlRestored = deanonymize(sqlScript, sqlMappings);
+check('SQL: exakter Platzhalter ersetzt', sqlRestored.includes("'Max Muster'"));
+check('SQL: Platzhalter mit Leerzeichen ersetzt', sqlRestored.includes("'max.muster@example.ch'"));
+check('SQL: Platzhalter mit anderer Schreibweise ersetzt', sqlRestored.includes("'P-2023/4711'"));
+check('SQL: [NAME_11] wird nicht von [NAME_1] getroffen', sqlRestored.includes("'Anna Andere'"));
+check('SQL: keine Platzhalter übrig', !sqlRestored.includes('[NAME_') && !sqlRestored.includes('[ email_1 ]'));
+check('Deanonymize: $ im Originalwert bleibt wörtlich',
+    deanonymize('x [NAME_1] y', [{ placeholder: '[NAME_1]', original: 'A$&B$1', category: 'name' }]) === 'x A$&B$1 y');
+
 // --- Parsen der LLM-Antwort (ollama.js) ---
 const parsed = parseEntities('{"entities":[{"text":"Max Muster","category":"name"},{"text":"Contoso AG","category":"organization"},{"text":"Max Muster","category":"name"}]}');
 check('Parse: Entitäten gelesen und dedupliziert',

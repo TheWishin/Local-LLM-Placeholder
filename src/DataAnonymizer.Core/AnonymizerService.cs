@@ -283,7 +283,11 @@ public sealed class AnonymizerService
         return new AnonymizationResult { AnonymizedText = sb.ToString(), Mappings = mappings };
     }
 
-    /// <summary>Ersetzt Platzhalter in einem Text (z.B. einer KI-Antwort) wieder durch die Originalwerte.</summary>
+    /// <summary>
+    /// Ersetzt Platzhalter in einem Text (z.B. einer KI-Antwort oder einem von der KI
+    /// erzeugten SQL-Skript) wieder durch die Originalwerte. Tolerant gegenüber
+    /// Umformatierungen durch KI-Tools: [ name_1 ] oder [Name_1] werden auch erkannt.
+    /// </summary>
     public string Deanonymize(string text, IEnumerable<MappingEntry> mappings)
     {
         if (string.IsNullOrEmpty(text))
@@ -291,12 +295,17 @@ public sealed class AnonymizerService
             return text ?? string.Empty;
         }
 
-        var sb = new StringBuilder(text);
+        var result = text;
         foreach (var m in mappings)
         {
-            sb.Replace(m.Placeholder, m.Original);
+            result = result.Replace(m.Placeholder, m.Original);
+            // Zweiter Durchgang für Varianten; MatchEvaluator, damit $-Zeichen
+            // im Originalwert nicht als Ersetzungsmuster interpretiert werden.
+            var inner = m.Placeholder.Trim('[', ']');
+            result = Regex.Replace(result, @"\[\s*" + Regex.Escape(inner) + @"\s*\]",
+                _ => m.Original, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
-        return sb.ToString();
+        return result;
     }
 
     // ---- Interne Logik ----------------------------------------------------

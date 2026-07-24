@@ -29,7 +29,7 @@ const t = () => STRINGS[state.lang];
 // ---- Persistenz -----------------------------------------------------------
 
 async function loadStored() {
-    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'allowedTerms', 'llmEnabled', 'llmModel']);
+    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'allowedTerms', 'llmEnabled', 'llmModel', 'mappings']);
     state.lang = local.lang ?? detectLanguage(navigator.language);
     state.options = { ...defaultOptions(), ...(local.options ?? {}) };
     state.customTermsText = local.customTerms ?? '';
@@ -37,13 +37,20 @@ async function loadStored() {
     state.llmEnabled = local.llmEnabled !== false; // Standard: an
     state.llmModel = local.llmModel ?? '';
 
-    const session = await chrome.storage.session.get(['input', 'output', 'mappings', 'response', 'restored', 'llmFindings']);
+    // Die Zuordnung überlebt Browser-Neustarts, damit Antworten und Skripte
+    // auch später noch zurückübersetzt werden können.
+    state.mappings = Array.isArray(local.mappings) ? local.mappings : [];
+
+    const session = await chrome.storage.session.get(['input', 'output', 'response', 'restored', 'llmFindings']);
     $('inputText').value = session.input ?? '';
-    state.mappings = session.mappings ?? [];
     state.lastLlmFindings = session.llmFindings ?? null;
     if (session.output !== undefined) {
         $('outputText').value = session.output;
         showResult(session.output, state.mappings);
+    } else if (state.mappings.length > 0) {
+        // Gespeicherte Zuordnung ohne aktuelles Ergebnis → De-Anonymisieren freischalten.
+        $('deanonSection').classList.remove('hidden');
+        $('mappingLoadedNote').classList.remove('hidden');
     }
     if (session.response) {
         $('responseText').value = session.response;
@@ -67,11 +74,12 @@ const saveLocal = () => chrome.storage.local.set({
 const saveSession = () => chrome.storage.session.set({
     input: $('inputText').value,
     output: $('outputText').value,
-    mappings: state.mappings,
     response: $('responseText').value,
     restored: $('restoredText').value,
     llmFindings: state.lastLlmFindings
 });
+
+const saveMappings = () => chrome.storage.local.set({ mappings: state.mappings });
 
 // ---- Oberfläche -----------------------------------------------------------
 
@@ -102,6 +110,10 @@ function renderTexts() {
     $('termsLabel').textContent = s.termsLabel;
     $('customTerms').placeholder = s.termsPlaceholder;
     $('allowedLabel').textContent = s.allowedLabel;
+    $('exportMappingBtn').textContent = s.btnExportMapping;
+    $('importMappingBtn').textContent = s.btnImportMapping;
+    $('deleteMappingBtn').textContent = s.btnDeleteMapping;
+    $('mappingLoadedNote').textContent = format(s.mappingLoaded, state.mappings.length);
     $('llmEnableLabel').textContent = s.llmEnable;
     $('llmRecheck').textContent = s.btnRecheck;
     $('llmErrorNote').textContent = s.llmError;
@@ -284,7 +296,9 @@ function removeAllowed(term) {
 function showResult(output, mappings) {
     state.mappings = mappings;
     $('outputText').value = output;
+    $('mappingLoadedNote').classList.add('hidden');
     renderMappingTable();
+    saveMappings();
 }
 
 // ---- Lokales LLM ----------------------------------------------------------
@@ -404,12 +418,18 @@ function clearAll() {
     $('outputText').value = '';
     $('responseText').value = '';
     $('restoredText').value = '';
-    state.mappings = [];
     state.lastLlmFindings = null;
     $('outputSection').classList.add('hidden');
-    $('deanonSection').classList.add('hidden');
     $('llmErrorNote').classList.add('hidden');
-    chrome.storage.session.remove(['input', 'output', 'mappings', 'response', 'restored', 'llmFindings']);
+    chrome.storage.session.remove(['input', 'output', 'response', 'restored', 'llmFindings']);
+    // Die gespeicherte Zuordnung bleibt erhalten (löschen über 🗑),
+    // damit Antworten weiterhin zurückübersetzt werden können.
+    if (state.mappings.length > 0) {
+        $('mappingLoadedNote').classList.remove('hidden');
+        $('mappingLoadedNote').textContent = format(t().mappingLoaded, state.mappings.length);
+    } else {
+        $('deanonSection').classList.add('hidden');
+    }
 }
 
 async function copyButton(button, textareaId) {
@@ -468,6 +488,57 @@ async function main() {
         ollama.warmUp(state.llmModel);
     });
     $('llmRecheck').addEventListener('click', () => ensureLlm());
+
+    $('exportMappingBtn').addEventListener('click', () => {
+        if (state.mappings.length === 0) {
+            return;
+        }
+        const blob = new Blob([JSON.stringify(state.mappings, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        a.download = `anonymizer-mapping-${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+    $('importMappingBtn').addEventListener('click', () => $('mappingFile').click());
+    $('mappingFile').addEventListener('change', async () => {
+        const file = $('mappingFile').files?.[0];
+        if (!file) {
+            return;
+        }
+        try {
+            const data = JSON.parse(await file.text());
+            const imported = Array.isArray(data)
+                ? data.filter(m => typeof m?.placeholder === 'string' && typeof m?.original === 'string')
+                    .map(m => ({ placeholder: m.placeholder, original: m.original, category: m.category ?? 'term' }))
+                : [];
+            if (imported.length > 0) {
+                state.mappings = imported;
+                saveMappings();
+                $('deanonSection').classList.remove('hidden');
+                renderTexts();
+                renderMappingTable();
+            }
+        } catch {
+            // Keine gültige Zuordnungsdatei – nichts ändern.
+        }
+        $('mappingFile').value = '';
+    });
+    $('deleteMappingBtn').addEventListener('click', () => {
+        state.mappings = [];
+        chrome.storage.local.remove('mappings');
+        $('restoredText').value = '';
+        $('restoredText').classList.add('hidden');
+        $('copyRestoredBtn').classList.add('hidden');
+        $('outputSection').classList.add('hidden');
+        $('deanonSection').classList.add('hidden');
+        $('outputText').value = '';
+        saveSession();
+    });
 
     $('anonymizeBtn').addEventListener('click', runAnonymize);
     $('clearBtn').addEventListener('click', clearAll);

@@ -1,5 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
+@using System.Text.Json
 @using DataAnonymizer.Services
 @inject AnonymizerService Anonymizer
 @inject LocalLlmClient Llm
@@ -109,15 +110,31 @@
                     }
                 </div>
             </div>
+        }
 
+        @if (_result is not null || _activeMappings.Count > 0)
+        {
             <div class="card shadow-sm mt-4">
                 <div class="card-header fw-bold">@Loc.T.CardDeanonymize</div>
                 <div class="card-body">
-                    <p class="text-muted small">@Loc.T.DeanonHint</p>
+                    @if (_result is null && _activeMappings.Count > 0)
+                    {
+                        <div class="alert alert-info py-2 small">@string.Format(Loc.T.MappingLoadedNote, _activeMappings.Count)</div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small">@Loc.T.DeanonHint</p>
+                    }
                     <textarea class="form-control font-monospace" rows="8"
                               placeholder="@Loc.T.ResponsePlaceholder"
                               @bind="_responseText"></textarea>
-                    <button class="btn btn-primary mt-3" @onclick="RunDeanonymize">@Loc.T.BtnDeanonymize</button>
+                    <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+                        <button class="btn btn-primary" @onclick="RunDeanonymize">@Loc.T.BtnDeanonymize</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportMappingsAsync">@Loc.T.BtnExportMapping</button>
+                        <label class="btn btn-sm btn-outline-secondary mb-0" for="mappingImport">@Loc.T.BtnImportMapping</label>
+                        <InputFile id="mappingImport" OnChange="ImportMappingsAsync" accept=".json" style="display:none" />
+                        <button class="btn btn-sm btn-outline-danger" @onclick="DeleteMappingsAsync">@Loc.T.BtnDeleteMapping</button>
+                    </div>
 
                     @if (_deanonymized is not null)
                     {
@@ -232,6 +249,7 @@
     private string _customTermsText = string.Empty;
     private string _allowedTermsText = string.Empty;
     private IReadOnlyList<LlmEntity>? _lastLlmFindings;
+    private List<MappingEntry> _activeMappings = new();
     private string? _deanonymized;
     private string? _copied;
     private bool _busy;
@@ -261,6 +279,14 @@
             if (!string.IsNullOrEmpty(savedAllowed))
             {
                 _allowedTermsText = savedAllowed;
+            }
+
+            // Gespeicherte Zuordnung laden, damit Antworten/Skripte auch nach einem
+            // Neustart noch zurückübersetzt werden können.
+            var savedMappings = await JS.InvokeAsync<string?>("appStorage.get", "mappings");
+            if (!string.IsNullOrEmpty(savedMappings))
+            {
+                _activeMappings = ParseMappings(savedMappings);
             }
 
             var savedLang = await JS.InvokeAsync<string?>("appStorage.get", "language");
@@ -438,18 +464,91 @@
 
         _lastLlmFindings = llmFindings;
         _result = Anonymizer.Anonymize(_inputText, _options, llmFindings);
+        await StoreResultMappingsAsync();
         _deanonymized = null;
         _copied = null;
         _busy = false;
     }
 
     /// <summary>Neu anonymisieren ohne erneuten LLM-Aufruf (z.B. nach Freigabe eines Werts).</summary>
-    private void ReAnonymize()
+    private async Task ReAnonymizeAsync()
     {
         ApplyOptionLists();
         _result = Anonymizer.Anonymize(_inputText, _options, _lastLlmFindings);
+        await StoreResultMappingsAsync();
         _deanonymized = null;
         _copied = null;
+    }
+
+    private async Task StoreResultMappingsAsync()
+    {
+        if (_result is null)
+        {
+            return;
+        }
+        _activeMappings = _result.Mappings.ToList();
+        await JS.InvokeVoidAsync("appStorage.set", "mappings", SerializeMappings(_activeMappings));
+    }
+
+    // ---- Zuordnung speichern / exportieren / importieren --------------------
+    // Dateiformat identisch mit der Browser-Erweiterung, damit Zuordnungen
+    // zwischen App und Erweiterung ausgetauscht werden können.
+
+    private sealed record MappingDto(string Placeholder, string Original, string Category);
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
+    };
+
+    private static string SerializeMappings(IEnumerable<MappingEntry> mappings) =>
+        JsonSerializer.Serialize(mappings.Select(m => new MappingDto(m.Placeholder, m.Original, PiiCategoryIds.ToId(m.Category))), JsonOpts);
+
+    private static List<MappingEntry> ParseMappings(string json)
+    {
+        try
+        {
+            var dtos = JsonSerializer.Deserialize<List<MappingDto>>(json, JsonOpts) ?? new();
+            return dtos
+                .Where(d => !string.IsNullOrEmpty(d.Placeholder) && d.Original is not null)
+                .Select(d => new MappingEntry(d.Placeholder, d.Original, PiiCategoryIds.FromId(d.Category)))
+                .ToList();
+        }
+        catch (JsonException)
+        {
+            return new List<MappingEntry>();
+        }
+    }
+
+    private async Task ExportMappingsAsync()
+    {
+        if (_activeMappings.Count > 0)
+        {
+            var name = $"anonymizer-mapping-{DateTime.Now:yyyyMMdd-HHmm}.json";
+            await JS.InvokeVoidAsync("appFile.download", name, SerializeMappings(_activeMappings));
+        }
+    }
+
+    private async Task ImportMappingsAsync(InputFileChangeEventArgs e)
+    {
+        using var reader = new StreamReader(e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+        var imported = ParseMappings(await reader.ReadToEndAsync());
+        if (imported.Count > 0)
+        {
+            _activeMappings = imported;
+            await JS.InvokeVoidAsync("appStorage.set", "mappings", SerializeMappings(_activeMappings));
+            _deanonymized = null;
+        }
+    }
+
+    private async Task DeleteMappingsAsync()
+    {
+        _activeMappings = new List<MappingEntry>();
+        _result = null;
+        _deanonymized = null;
+        await JS.InvokeVoidAsync("appStorage.remove", "mappings");
     }
 
     private async Task AllowValueAsync(string original)
@@ -461,14 +560,14 @@
         }
         _allowedTermsText = string.Join('\n', terms);
         await JS.InvokeVoidAsync("appStorage.set", "allowedTerms", _allowedTermsText);
-        ReAnonymize();
+        await ReAnonymizeAsync();
     }
 
     private async Task RemoveAllowedAsync(string term)
     {
         _allowedTermsText = string.Join('\n', AllowedTerms.Where(t => !string.Equals(t, term, StringComparison.OrdinalIgnoreCase)));
         await JS.InvokeVoidAsync("appStorage.set", "allowedTerms", _allowedTermsText);
-        ReAnonymize();
+        await ReAnonymizeAsync();
     }
 
     private async Task SaveAllowedTerms()
@@ -476,15 +575,15 @@
         await JS.InvokeVoidAsync("appStorage.set", "allowedTerms", _allowedTermsText);
         if (_result is not null)
         {
-            ReAnonymize();
+            await ReAnonymizeAsync();
         }
     }
 
     private void RunDeanonymize()
     {
-        if (_result is not null)
+        if (_activeMappings.Count > 0)
         {
-            _deanonymized = Anonymizer.Deanonymize(_responseText, _result.Mappings);
+            _deanonymized = Anonymizer.Deanonymize(_responseText, _activeMappings);
             _copied = null;
         }
     }

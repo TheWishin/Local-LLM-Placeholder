@@ -51,10 +51,17 @@
     <section id="deanonSection" class="hidden">
         <details>
             <summary id="deanonTitle"></summary>
+            <div id="mappingLoadedNote" class="muted small hidden"></div>
             <textarea id="responseText" rows="5"></textarea>
             <div class="btn-row">
                 <button id="deanonymizeBtn" class="primary"></button>
                 <button id="copyRestoredBtn" class="ghost small-btn hidden"></button>
+            </div>
+            <div class="btn-row">
+                <button id="exportMappingBtn" class="ghost small-btn"></button>
+                <button id="importMappingBtn" class="ghost small-btn"></button>
+                <button id="deleteMappingBtn" class="ghost small-btn"></button>
+                <input type="file" id="mappingFile" accept=".json" class="hidden" />
             </div>
             <textarea id="restoredText" rows="5" readonly class="hidden"></textarea>
         </details>

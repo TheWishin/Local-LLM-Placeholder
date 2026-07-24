@@ -204,7 +204,11 @@ export function anonymize(text, options, llmFindings = null) {
     return { anonymizedText: out, mappings };
 }
 
-/** Ersetzt Platzhalter in einem Text (z.B. einer KI-Antwort) wieder durch die Originalwerte. */
+/**
+ * Ersetzt Platzhalter in einem Text (z.B. einer KI-Antwort oder einem von der KI
+ * erzeugten SQL-Skript) wieder durch die Originalwerte. Tolerant gegenüber
+ * Umformatierungen durch KI-Tools: [ name_1 ] oder [Name_1] werden auch erkannt.
+ */
 export function deanonymize(text, mappings) {
     if (!text) {
         return '';
@@ -212,6 +216,11 @@ export function deanonymize(text, mappings) {
     let out = text;
     for (const m of mappings) {
         out = out.split(m.placeholder).join(m.original);
+        // Zweiter Durchgang für Varianten; Funktions-Ersetzung, damit $-Zeichen
+        // im Originalwert nicht als Ersetzungsmuster interpretiert werden.
+        const inner = m.placeholder.replace(/^\[|\]$/g, '');
+        const rx = new RegExp('\\[\\s*' + escapeRegex(inner) + '\\s*\\]', 'gi');
+        out = out.replace(rx, () => m.original);
     }
     return out;
 }

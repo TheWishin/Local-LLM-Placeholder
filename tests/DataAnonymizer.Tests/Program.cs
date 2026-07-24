@@ -186,6 +186,33 @@ var allowLlm = svc.Anonymize("Max Muster arbeitet bei der Contoso AG.",
     new List<LlmEntity> { new("Max Muster", PiiCategory.Name), new("Contoso AG", PiiCategory.Organisation) });
 Check("Allow: Gilt auch für LLM-Funde", allowLlm.AnonymizedText.Contains("Contoso AG") && !allowLlm.AnonymizedText.Contains("Max Muster"));
 
+// --- SQL-Skript-Rundlauf: Platzhalter tolerant zurückersetzen ---
+var sqlMappings = new List<MappingEntry>
+{
+    new("[NAME_1]", "Max Muster", PiiCategory.Name),
+    new("[EMAIL_1]", "max.muster@example.ch", PiiCategory.Email),
+    new("[REFERENZ_1]", "P-2023/4711", PiiCategory.Referenz),
+    new("[NAME_11]", "Anna Andere", PiiCategory.Name)
+};
+var sqlScript = """
+INSERT INTO customers (name, email, policy_no)
+VALUES ('[NAME_1]', '[ email_1 ]', '[Referenz_1]');
+UPDATE customers SET name = '[NAME_11]' WHERE email = '[EMAIL_1]';
+""";
+var sqlRestored = svc.Deanonymize(sqlScript, sqlMappings);
+Check("SQL: exakter Platzhalter ersetzt", sqlRestored.Contains("'Max Muster'"));
+Check("SQL: Platzhalter mit Leerzeichen ersetzt", sqlRestored.Contains("'max.muster@example.ch'"));
+Check("SQL: Platzhalter mit anderer Schreibweise ersetzt", sqlRestored.Contains("'P-2023/4711'"));
+Check("SQL: [NAME_11] wird nicht von [NAME_1] getroffen", sqlRestored.Contains("'Anna Andere'"));
+Check("SQL: keine Platzhalter übrig", !sqlRestored.Contains("[NAME_") && !sqlRestored.Contains("[ email_1 ]"));
+Check("Deanonymize: $ im Originalwert bleibt wörtlich",
+    svc.Deanonymize("x [NAME_1] y", new[] { new MappingEntry("[NAME_1]", "A$&B$1", PiiCategory.Name) }) == "x A$&B$1 y");
+
+// --- Kategorie-IDs für Export/Import (kompatibel mit der Erweiterung) ---
+Check("Kategorie-IDs: Rundlauf über alle Kategorien",
+    Enum.GetValues<PiiCategory>().All(c => PiiCategoryIds.FromId(PiiCategoryIds.ToId(c)) == c));
+Check("Kategorie-IDs: Unbekannt wird Begriff", PiiCategoryIds.FromId("whatever") == PiiCategory.Begriff);
+
 // --- Parsen der LLM-Antwort ---
 var parsed = LocalLlmClient.ParseEntities(
     """{"entities":[{"text":"Max Muster","category":"name"},{"text":"Contoso AG","category":"organization"},{"text":"Max Muster","category":"name"}]}""");

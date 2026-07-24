@@ -85,9 +85,22 @@ the app.
 ## Workflow
 
 1. **Anonymize:** paste the case text → "Anonymize" → copy the anonymized text.
-2. **Use in Claude Code:** paste the anonymized text and let it work out the answer.
+2. **Use in Claude Code:** paste the anonymized text and let it work out the
+   answer – prose, an SQL script, code, anything containing the placeholders.
 3. **De-anonymize:** copy the answer back into the app → "Restore original
    values" → the original values are put back in.
+
+The round trip is built for real work with AI tools:
+
+- **The mapping table is kept** locally in your browser until you delete it –
+  so when Claude writes you an SQL script with `[NAME_1]` placeholders today,
+  you can still translate it back tomorrow, after a restart. De-anonymizing
+  works standalone, without running an anonymization first.
+- **Tolerant restore:** placeholders reformatted by AI tools – `[ name_1 ]`,
+  `[Name_1]` – are recognized too.
+- **Export/import:** save a mapping as a JSON file and load it again later or
+  on another machine. The file format is identical between the app and the
+  browser extension, so a mapping created in one can be restored in the other.
 
 ## What is detected?
 
