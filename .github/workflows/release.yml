@@ -1,13 +1,23 @@
 name: Release
 
-# Erstellt bei einem Tag wie v1.0.0 fertige Pakete für Windows, Linux und macOS.
-# Die Empfänger brauchen kein .NET – einfach entpacken und starten.
+# Erstellt fertige Pakete für Windows, Linux und macOS sowie das ZIP der
+# Browser-Erweiterung. Die Empfänger brauchen kein .NET – einfach entpacken
+# und starten. Auslösen entweder durch Pushen eines Tags wie v1.0.0 oder
+# manuell über "Run workflow" (der Tag wird dann automatisch erstellt).
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release-Version, z.B. v1.0.0'
+        required: true
 
 permissions:
   contents: write
+
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
 
 jobs:
   release:
@@ -33,16 +43,18 @@ jobs:
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
             dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
-            (cd publish && zip -qr "../DataAnonymizer-${GITHUB_REF_NAME}-$rid.zip" "$rid")
+            (cd publish && zip -qr "../DataAnonymizer-${VERSION}-$rid.zip" "$rid")
           done
 
       - name: Browser-Erweiterung paketieren (Chrome/Edge)
         run: |
-          zip -qr "DataAnonymizer-${GITHUB_REF_NAME}-browser-extension.zip" extension \
+          zip -qr "DataAnonymizer-${VERSION}-browser-extension.zip" extension \
             -x "extension/engine.test.mjs"
 
       - name: GitHub-Release erstellen
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: DataAnonymizer-*.zip
           generate_release_notes: true
