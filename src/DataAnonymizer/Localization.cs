@@ -8,6 +8,16 @@ public sealed class UiText
     public required string PageTitle { get; init; }
     public required string AppTitle { get; init; }
     public required string Tagline { get; init; }
+    public required string PrivacyBadge { get; init; }
+    public required string HowTitle { get; init; }
+    public required string Step1Title { get; init; }
+    public required string Step1Desc { get; init; }
+    public required string Step2Title { get; init; }
+    public required string Step2Desc { get; init; }
+    public required string Step3Title { get; init; }
+    public required string Step3Desc { get; init; }
+    public required string AdvancedTitle { get; init; }
+    public required string AdvancedHint { get; init; }
 
     public required string CardOriginal { get; init; }
     public required string InputPlaceholder { get; init; }
@@ -128,7 +138,17 @@ public static class UiStrings
     {
         PageTitle = "Daten-Anonymisierer",
         AppTitle = "🔒 Daten-Anonymisierer",
-        Tagline = "Ersetzt persönliche Daten (Namen, E-Mails, Telefonnummern, IBAN, AHV-Nr., Adressen, …) durch Platzhalter, bevor du einen Fall in Claude Code oder ein anderes KI-Tool einfügst. Alles läuft lokal – es werden keine Daten übertragen oder gespeichert.",
+        Tagline = "Ersetzt persönliche Daten durch Platzhalter, bevor du einen Fall in ein KI-Tool einfügst – und setzt die echten Daten danach wieder ein.",
+        PrivacyBadge = "🔒 Alles bleibt auf diesem Computer – es werden keine Daten ins Internet gesendet.",
+        HowTitle = "So funktioniert's",
+        Step1Title = "1. Anonymisieren",
+        Step1Desc = "Text mit persönlichen Daten einfügen. Die App ersetzt Namen, Adressen usw. durch Platzhalter wie [NAME_1].",
+        Step2Title = "2. Im KI-Tool nutzen",
+        Step2Desc = "Den anonymisierten Text in Claude, ChatGPT o.Ä. einfügen und die Antwort oder das SQL-Skript erstellen lassen.",
+        Step3Title = "3. Zurückübersetzen",
+        Step3Desc = "Die Antwort hier einfügen – die Platzhalter werden wieder durch deine echten Daten ersetzt.",
+        AdvancedTitle = "⚙️ Erweiterte Einstellungen",
+        AdvancedHint = "Standardmässig ist alles sinnvoll eingestellt. Hier kannst du festlegen, was erkannt wird, und eigene Begriffe hinzufügen.",
         CardOriginal = "1️⃣ Originaltext mit persönlichen Daten",
         InputPlaceholder = "Falltext hier einfügen, z.B.:\nHerr Max Muster (geb. 12.03.1985), Bahnhofstrasse 12, 8001 Zürich, Tel. +41 79 123 45 67, max.muster@example.ch, meldet einen Schaden. Policen-Nr. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonymisieren",
@@ -194,7 +214,17 @@ public static class UiStrings
     {
         PageTitle = "Data Anonymizer",
         AppTitle = "🔒 Data Anonymizer",
-        Tagline = "Replaces personal data (names, e-mails, phone numbers, IBANs, social security numbers, addresses, …) with placeholders before you paste a case into Claude Code or another AI tool. Everything runs locally – no data is transmitted or stored.",
+        Tagline = "Replaces personal data with placeholders before you paste a case into an AI tool – and puts the real data back afterwards.",
+        PrivacyBadge = "🔒 Everything stays on this computer – no data is ever sent to the internet.",
+        HowTitle = "How it works",
+        Step1Title = "1. Anonymize",
+        Step1Desc = "Paste text with personal data. The app replaces names, addresses etc. with placeholders like [NAME_1].",
+        Step2Title = "2. Use in your AI tool",
+        Step2Desc = "Paste the anonymized text into Claude, ChatGPT etc. and let it write the answer or SQL script.",
+        Step3Title = "3. Translate back",
+        Step3Desc = "Paste the answer here – the placeholders are replaced with your real data again.",
+        AdvancedTitle = "⚙️ Advanced settings",
+        AdvancedHint = "Everything is set up sensibly by default. Here you can choose what gets detected and add your own terms.",
         CardOriginal = "1️⃣ Original text with personal data",
         InputPlaceholder = "Paste your case text here, e.g.:\nMr. John Smith (born on 12/03/1985), 12 Main Street, Zurich, phone +41 79 123 45 67, john.smith@example.com, reports a claim. Policy No. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonymize",
@@ -260,7 +290,17 @@ public static class UiStrings
     {
         PageTitle = "Anonymiseur de données",
         AppTitle = "🔒 Anonymiseur de données",
-        Tagline = "Remplace les données personnelles (noms, e-mails, numéros de téléphone, IBAN, numéros AVS, adresses, …) par des variables avant de coller un cas dans Claude Code ou un autre outil d'IA. Tout fonctionne en local – aucune donnée n'est transmise ni enregistrée.",
+        Tagline = "Remplace les données personnelles par des variables avant de coller un cas dans un outil d'IA – et réinsère les vraies données ensuite.",
+        PrivacyBadge = "🔒 Tout reste sur cet ordinateur – aucune donnée n'est envoyée sur Internet.",
+        HowTitle = "Comment ça marche",
+        Step1Title = "1. Anonymiser",
+        Step1Desc = "Collez un texte avec des données personnelles. L'app remplace noms, adresses, etc. par des variables comme [NOM_1].",
+        Step2Title = "2. Utiliser dans l'IA",
+        Step2Desc = "Collez le texte anonymisé dans Claude, ChatGPT, etc. et laissez générer la réponse ou le script SQL.",
+        Step3Title = "3. Retraduire",
+        Step3Desc = "Collez la réponse ici – les variables sont remplacées par vos vraies données.",
+        AdvancedTitle = "⚙️ Paramètres avancés",
+        AdvancedHint = "Tout est configuré judicieusement par défaut. Ici, vous pouvez choisir ce qui est détecté et ajouter vos propres termes.",
         CardOriginal = "1️⃣ Texte original avec données personnelles",
         InputPlaceholder = "Collez votre texte ici, p. ex. :\nMonsieur Jean Dupont (né le 12.03.1985), Rue de Lausanne 12, 1201 Genève, tél. +41 79 123 45 67, jean.dupont@example.ch, annonce un sinistre. N° de police P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonymiser",
@@ -326,7 +366,17 @@ public static class UiStrings
     {
         PageTitle = "Anonimizzatore di dati",
         AppTitle = "🔒 Anonimizzatore di dati",
-        Tagline = "Sostituisce i dati personali (nomi, e-mail, numeri di telefono, IBAN, numeri AVS, indirizzi, …) con segnaposto prima di incollare un caso in Claude Code o in un altro strumento di IA. Tutto funziona in locale – nessun dato viene trasmesso o salvato.",
+        Tagline = "Sostituisce i dati personali con segnaposto prima di incollare un caso in uno strumento di IA – e reinserisce i dati reali dopo.",
+        PrivacyBadge = "🔒 Tutto rimane su questo computer – nessun dato viene inviato a Internet.",
+        HowTitle = "Come funziona",
+        Step1Title = "1. Anonimizza",
+        Step1Desc = "Incolla un testo con dati personali. L'app sostituisce nomi, indirizzi ecc. con segnaposto come [NOME_1].",
+        Step2Title = "2. Usa nell'IA",
+        Step2Desc = "Incolla il testo anonimizzato in Claude, ChatGPT ecc. e fai generare la risposta o lo script SQL.",
+        Step3Title = "3. Ritraduci",
+        Step3Desc = "Incolla la risposta qui – i segnaposto vengono sostituiti di nuovo con i tuoi dati reali.",
+        AdvancedTitle = "⚙️ Impostazioni avanzate",
+        AdvancedHint = "Tutto è impostato in modo sensato per impostazione predefinita. Qui puoi scegliere cosa viene rilevato e aggiungere i tuoi termini.",
         CardOriginal = "1️⃣ Testo originale con dati personali",
         InputPlaceholder = "Incolla qui il testo, ad es.:\nSignor Mario Rossi (nato il 12.03.1985), Via Roma 8, 6900 Lugano, tel. +41 79 123 45 67, mario.rossi@example.ch, segnala un sinistro. Polizza n. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7.",
         BtnAnonymize = "🔒 Anonimizza",

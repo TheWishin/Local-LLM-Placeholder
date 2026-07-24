@@ -9,20 +9,51 @@
 
 <PageTitle>@Loc.T.PageTitle</PageTitle>
 
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <h1 class="mb-1">@Loc.T.AppTitle</h1>
-    <div class="d-flex align-items-center gap-2">
-        <span aria-hidden="true">🌐</span>
-        <select class="form-select form-select-sm w-auto" aria-label="Language"
-                @bind="_langCode" @bind:after="LanguageChangedAsync">
-            @foreach (var lang in LocalizationService.All)
-            {
-                <option value="@lang.Code">@lang.NativeName</option>
-            }
-        </select>
+<div class="app-hero">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="mb-1">@Loc.T.AppTitle</h1>
+            <p class="hero-tagline mb-0">@Loc.T.Tagline</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span aria-hidden="true">🌐</span>
+            <select class="form-select form-select-sm w-auto" aria-label="Language"
+                    @bind="_langCode" @bind:after="LanguageChangedAsync">
+                @foreach (var lang in LocalizationService.All)
+                {
+                    <option value="@lang.Code">@lang.NativeName</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="privacy-badge mt-3">@Loc.T.PrivacyBadge</div>
+</div>
+
+<div class="how-strip">
+    <div class="how-step">
+        <div class="how-num">1</div>
+        <div>
+            <div class="how-step-title">@Loc.T.Step1Title</div>
+            <div class="how-step-desc">@Loc.T.Step1Desc</div>
+        </div>
+    </div>
+    <div class="how-arrow" aria-hidden="true">→</div>
+    <div class="how-step">
+        <div class="how-num">2</div>
+        <div>
+            <div class="how-step-title">@Loc.T.Step2Title</div>
+            <div class="how-step-desc">@Loc.T.Step2Desc</div>
+        </div>
+    </div>
+    <div class="how-arrow" aria-hidden="true">→</div>
+    <div class="how-step">
+        <div class="how-num">3</div>
+        <div>
+            <div class="how-step-title">@Loc.T.Step3Title</div>
+            <div class="how-step-desc">@Loc.T.Step3Desc</div>
+        </div>
     </div>
 </div>
-<p class="text-muted mb-4">@Loc.T.Tagline</p>
 
 <div class="row g-4">
     <div class="col-lg-8">
@@ -201,9 +232,17 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mt-4">
-            <div class="card-header fw-bold">@Loc.T.CardRules</div>
-            <div class="card-body">
+        <details class="card shadow-sm mt-4 advanced-panel">
+            <summary class="card-header fw-bold">
+                @Loc.T.AdvancedTitle
+            </summary>
+            <div class="card-body pb-2">
+                <p class="text-muted small mb-0">@Loc.T.AdvancedHint</p>
+            </div>
+
+        <div class="card border-0 shadow-none">
+            <div class="card-header bg-transparent fw-semibold">@Loc.T.CardRules</div>
+            <div class="card-body pt-2">
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optNamen" @bind="_options.Namen" /><label class="form-check-label" for="optNamen">@Loc.T.OptNames</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optEmails" @bind="_options.Emails" /><label class="form-check-label" for="optEmails">@Loc.T.OptEmails</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" id="optTel" @bind="_options.Telefonnummern" /><label class="form-check-label" for="optTel">@Loc.T.OptPhones</label></div>
@@ -220,24 +259,25 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mt-4">
-            <div class="card-header fw-bold">@Loc.T.CardTerms</div>
-            <div class="card-body">
+        <div class="card border-0 shadow-none">
+            <div class="card-header bg-transparent fw-semibold">@Loc.T.CardTerms</div>
+            <div class="card-body pt-2">
                 <p class="text-muted small">@Loc.T.TermsHint</p>
-                <textarea class="form-control font-monospace" rows="6"
+                <textarea class="form-control font-monospace" rows="4"
                           placeholder="@Loc.T.TermsPlaceholder"
                           @bind="_customTermsText" @bind:after="SaveCustomTerms"></textarea>
             </div>
         </div>
 
-        <div class="card shadow-sm mt-4">
-            <div class="card-header fw-bold">@Loc.T.CardAllowed</div>
-            <div class="card-body">
+        <div class="card border-0 shadow-none">
+            <div class="card-header bg-transparent fw-semibold">@Loc.T.CardAllowed</div>
+            <div class="card-body pt-2">
                 <p class="text-muted small">@Loc.T.AllowedHint</p>
-                <textarea class="form-control font-monospace" rows="4"
+                <textarea class="form-control font-monospace" rows="3"
                           @bind="_allowedTermsText" @bind:after="SaveAllowedTerms"></textarea>
             </div>
         </div>
+        </details>
     </div>
 </div>
 

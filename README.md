@@ -14,6 +14,25 @@ the running browser session.
 durch Platzhalter ersetzt. Alles läuft zu 100 % lokal – die Oberfläche ist auf
 Deutsch, Englisch, Französisch und Italienisch verfügbar (Auswahl oben rechts).*
 
+## For testers – quickest way to try it
+
+Pick **one** of these; both are on the
+[Releases page](https://github.com/TheWishin/Local-LLM-Placeholder/releases/latest):
+
+- **Desktop app** – download the ZIP for your system (`win-x64` for Windows,
+  `osx-arm64` for Apple-Silicon Macs, `osx-x64` for Intel Macs), unzip, run
+  `DataAnonymizer` and open <http://localhost:5100>. Nothing else to install.
+- **Browser extension (Chrome/Edge)** – download the `browser-extension` ZIP,
+  unzip it, open `chrome://extensions`, turn on **Developer mode**, click
+  **Load unpacked** and pick the folder. Click the 🔒 icon to use it. Installs
+  without admin rights, so it works on a locked-down work laptop.
+
+The app opens with a short **"How it works"** strip (1 Anonymize → 2 Use in your
+AI tool → 3 Translate back). The **local-AI detection is optional** – if you also
+want names without a salutation, company names, etc. to be caught, install
+[Ollama](https://ollama.com) and the app downloads a small model by itself the
+first time. Without Ollama, the pattern detection still works on its own.
+
 ## Multi-language
 
 - **UI languages:** German, English, French, Italian – switchable at the top

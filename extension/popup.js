@@ -95,6 +95,10 @@ function renderTexts() {
     const s = t();
     $('appTitle').textContent = s.appTitle;
     $('tagline').textContent = s.tagline;
+    $('privacyBadge').textContent = s.privacyBadge;
+    $('stepAnon').textContent = s.stepAnon;
+    $('stepUse').textContent = s.stepUse;
+    $('stepRestore').textContent = s.stepRestore;
     $('inputLabel').textContent = s.inputLabel;
     $('inputText').placeholder = s.inputPlaceholder;
     $('anonymizeBtn').textContent = state.busy ? s.btnAnonymizeBusy : s.btnAnonymize;
