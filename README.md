@@ -143,3 +143,5 @@ aid, **not a substitute for your own review**: skim the anonymized text before
 pasting it into an AI tool. Names without a salutation or keyword are only
 found when LLM detection is enabled – or via the "Custom terms" list (stored
 locally in the browser).
+
+- Wishin
