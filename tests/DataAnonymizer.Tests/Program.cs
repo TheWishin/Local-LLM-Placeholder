@@ -252,3 +252,4 @@ using (var offlineClient = new LocalLlmClient(new LocalLlmOptions { Endpoint = $
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "ALLE TESTS BESTANDEN" : $"{failures} TEST(S) FEHLGESCHLAGEN");
 Environment.Exit(failures == 0 ? 0 : 1);
+ 
