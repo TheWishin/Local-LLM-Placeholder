@@ -219,6 +219,33 @@ Check("DSG: LLM-Kategorie 'health' -> sensitiv",
 Check("DSG: LLM-Kategorie 'ip' -> Ip",
     LocalLlmClient.ParseEntities("""{"entities":[{"text":"10.0.0.5","category":"ip"}]}""").Single().Category == PiiCategory.Ip);
 
+// --- Neue Detektoren: VIN, BIC/SWIFT, USt-IdNr/VAT ---
+var vinText = "Fahrzeug FIN 1HGBH41JXMN109186 im Vertrag.";
+var vin = svc.Anonymize(vinText, new AnonymizerOptions());
+Check("VIN erkannt und ersetzt", !vin.AnonymizedText.Contains("1HGBH41JXMN109186") && vin.AnonymizedText.Contains("[REFERENZ_1]"));
+Check("VIN: als Referenz-Kategorie", vin.Mappings.Any(m => m.Category == PiiCategory.Referenz && m.Original == "1HGBH41JXMN109186"));
+Check("VIN: 16 Zeichen sind keine VIN", svc.Anonymize("Kurz 1HGBH41JXMN10918 Ende.", new AnonymizerOptions()).AnonymizedText.Contains("1HGBH41JXMN10918"));
+Check("VIN: Round-Trip", svc.Deanonymize(vin.AnonymizedText, vin.Mappings) == vinText);
+
+var bicText = "Bank BIC: DEUTDEFF500 und SWIFT-Code: UBSWCHZH80A.";
+var bic = svc.Anonymize(bicText, new AnonymizerOptions());
+Check("BIC (11) erkannt", !bic.AnonymizedText.Contains("DEUTDEFF500") && bic.AnonymizedText.Contains("[IBAN_1]"));
+Check("SWIFT (11) erkannt", !bic.AnonymizedText.Contains("UBSWCHZH80A"));
+Check("BIC: als IBAN-Kategorie", bic.Mappings.Any(m => m.Category == PiiCategory.Iban && m.Original == "DEUTDEFF500"));
+Check("BIC: kurzer BIC (8) erkannt", !svc.Anonymize("BIC DEUTDEFF hier.", new AnonymizerOptions()).AnonymizedText.Contains("DEUTDEFF"));
+Check("BIC: 8-Buchstaben-Wort ohne Schlüsselwort ist kein BIC", svc.Anonymize("Der Code DEUTDEFF ohne Kontext.", new AnonymizerOptions()).AnonymizedText.Contains("DEUTDEFF"));
+Check("BIC: Round-Trip", svc.Deanonymize(bic.AnonymizedText, bic.Mappings) == bicText);
+
+var vatText = "USt-IdNr.: DE123456789, VAT: ATU12345678, N. IVA: IT12345678901, TVA: FR12345678901.";
+var vat = svc.Anonymize(vatText, new AnonymizerOptions());
+Check("VAT DE erkannt", !vat.AnonymizedText.Contains("DE123456789"));
+Check("VAT AT erkannt", !vat.AnonymizedText.Contains("ATU12345678"));
+Check("VAT IT erkannt", !vat.AnonymizedText.Contains("IT12345678901"));
+Check("VAT FR erkannt", !vat.AnonymizedText.Contains("FR12345678901"));
+Check("VAT: als Referenz-Kategorie", vat.Mappings.Any(m => m.Category == PiiCategory.Referenz && m.Original == "DE123456789"));
+Check("VAT: Nummer ohne Schlüsselwort bleibt", svc.Anonymize("Wert DE123456789 im Text.", new AnonymizerOptions()).AnonymizedText.Contains("DE123456789"));
+Check("VAT: Round-Trip", svc.Deanonymize(vat.AnonymizedText, vat.Mappings) == vatText);
+
 // --- SQL-Skript-Rundlauf: Platzhalter tolerant zurückersetzen ---
 var sqlMappings = new List<MappingEntry>
 {

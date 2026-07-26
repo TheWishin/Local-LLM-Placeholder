@@ -103,6 +103,13 @@ public sealed class AnonymizerService
     private static readonly Regex IbanRx = new(
         @"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b", Opts);
 
+    // BIC/SWIFT-Code (8 oder 11 Zeichen: 4 Buchstaben + 2 Buchstaben + 2 alphanumerische
+    // + optional 3 alphanumerische). Nur mit vorangehendem Schlüsselwort (BIC, SWIFT,
+    // "SWIFT-Code"), um Fehltreffer zu vermeiden; nur der Code selbst wird ersetzt.
+    private static readonly Regex BicRx = new(
+        @"\b(?:BIC|SWIFT)(?:[\s\-]?Code)?[\s:\-]+" +
+        @"(?<bic>[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b", Opts);
+
     // Schweizer AHV-Nummer (756.1234.5678.97) und US Social Security Number (123-45-6789)
     private static readonly Regex SocialSecurityRx = new(
         @"\b756[.\s]?\d{4}[.\s]?\d{4}[.\s]?\d{2}\b|\b\d{3}-\d{2}-\d{4}\b", Opts);
@@ -114,6 +121,10 @@ public sealed class AnonymizerService
     // Schweizer Unternehmens-Identifikationsnummer (UID): CHE-123.456.789
     private static readonly Regex UidRx = new(
         @"\bCHE-\d{3}\.\d{3}\.\d{3}(?:\s?(?:MWST|TVA|IVA|VAT))?\b", Opts);
+
+    // Fahrgestellnummer (VIN): genau 17 Zeichen aus A-H, J-N, P, R-Z und 0-9 (kein I/O/Q).
+    private static readonly Regex VinRx = new(
+        @"\b[A-HJ-NPR-Z0-9]{17}\b", Opts);
 
     // IP-Adressen: IPv4 (mit Gültigkeitsprüfung 0-255) und einfache IPv6.
     private static readonly Regex IpRx = new(
@@ -209,6 +220,12 @@ public sealed class AnonymizerService
         @"|(?:Polizza|Contratto|Pratica|Sinistro|Fattura|Riferimento)\s*(?:n[°o.]|numero)\.?)" +
         @"\s*:?\s*(?<ref>[A-Za-z0-9][A-Za-z0-9.\-/]{2,})",
         Opts | RegexOptions.IgnoreCase);
+
+    // Europäische USt-IdNr./VAT, nur mit Schlüsselwort (USt-IdNr., VAT, TVA, N. IVA).
+    // Nur die Nummer (Ländercode + 8–12 alphanumerische Zeichen) wird ersetzt.
+    private static readonly Regex VatRx = new(
+        @"\b(?:USt-?IdNr|VAT|TVA|(?:[NP]\.?\s*)?IVA)\.?\s*:?\s*" +
+        @"(?<vat>[A-Z]{2}[A-Z0-9]{8,12})\b", Opts);
 
     // Wörter, die nach einer Anrede nicht Teil des Namens sind.
     private static readonly HashSet<string> NameStopWords = new(StringComparer.Ordinal)
@@ -359,6 +376,8 @@ public sealed class AnonymizerService
         if (options.Iban)
         {
             AddMatches(result, IbanRx.Matches(text), PiiCategory.Iban, priority);
+            // BIC/SWIFT-Codes (nur mit Schlüsselwort) – gleiche Kategorie wie IBAN.
+            AddGroupMatches(result, BicRx.Matches(text), "bic", PiiCategory.Iban, priority);
         }
 
         priority++;
@@ -390,6 +409,10 @@ public sealed class AnonymizerService
         if (options.Referenzen)
         {
             AddMatches(result, UidRx.Matches(text), PiiCategory.Referenz, priority);
+            // Fahrgestellnummer (VIN): der ganze Treffer ist die Nummer.
+            AddMatches(result, VinRx.Matches(text), PiiCategory.Referenz, priority);
+            // Europäische USt-IdNr./VAT (nur mit Schlüsselwort) – nur die Nummer ersetzen.
+            AddGroupMatches(result, VatRx.Matches(text), "vat", PiiCategory.Referenz, priority);
             foreach (Match m in ReferenceRx.Matches(text))
             {
                 var g = m.Groups["ref"];

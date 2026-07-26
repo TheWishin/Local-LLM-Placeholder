@@ -39,6 +39,14 @@ const EMAIL_RX = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g;
 
 const IBAN_RX = /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b/g;
 
+// BIC/SWIFT-Code (8 oder 11 Zeichen: 4 Buchstaben + 2 Buchstaben + 2 alphanumerische
+// + optional 3 alphanumerische). Nur mit vorangehendem Schlüsselwort (BIC, SWIFT,
+// "SWIFT-Code"), um Fehltreffer zu vermeiden; nur der Code selbst wird ersetzt.
+const BIC_RX = new RegExp(
+    '\\b(?:BIC|SWIFT)(?:[\\s\\-]?Code)?[\\s:\\-]+' +
+    '(?<bic>[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\\b',
+    'dg');
+
 // Schweizer AHV-Nummer (756.1234.5678.97) und US Social Security Number (123-45-6789)
 const SSN_RX = /\b756[.\s]?\d{4}[.\s]?\d{4}[.\s]?\d{2}\b|\b\d{3}-\d{2}-\d{4}\b/g;
 
@@ -47,6 +55,9 @@ const HEALTH_CARD_RX = /(?<!\d)807\d{17}(?!\d)/g;
 
 // Schweizer Unternehmens-Identifikationsnummer (UID): CHE-123.456.789
 const UID_RX = /\bCHE-\d{3}\.\d{3}\.\d{3}(?:\s?(?:MWST|TVA|IVA|VAT))?\b/g;
+
+// Fahrgestellnummer (VIN): genau 17 Zeichen aus A-H, J-N, P, R-Z und 0-9 (kein I/O/Q).
+const VIN_RX = /\b[A-HJ-NPR-Z0-9]{17}\b/g;
 
 // IP-Adressen: IPv4 (0-255) und einfache IPv6.
 const IP_RX = /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b|\b(?:[A-Fa-f0-9]{1,4}:){2,7}[A-Fa-f0-9]{1,4}\b/g;
@@ -130,6 +141,13 @@ const REFERENCE_RX = new RegExp(
     '|(?:Polizza|Contratto|Pratica|Sinistro|Fattura|Riferimento)\\s*(?:n[°o.]|numero)\\.?)' +
     '\\s*:?\\s*(?<ref>[A-Za-z0-9][A-Za-z0-9.\\-/]{2,})',
     'dgi');
+
+// Europäische USt-IdNr./VAT, nur mit Schlüsselwort (USt-IdNr., VAT, TVA, N. IVA).
+// Nur die Nummer (Ländercode + 8–12 alphanumerische Zeichen) wird ersetzt.
+const VAT_RX = new RegExp(
+    '\\b(?:USt-?IdNr|VAT|TVA|(?:[NP]\\.?\\s*)?IVA)\\.?\\s*:?\\s*' +
+    '(?<vat>[A-Z]{2}[A-Z0-9]{8,12})\\b',
+    'dg');
 
 // Wörter, die nach einer Anrede nicht Teil des Namens sind.
 const NAME_STOP_WORDS = new Set([
@@ -267,6 +285,14 @@ function collect(text, options, llmFindings) {
     priority++;
     if (options.iban) {
         addMatches(result, text, IBAN_RX, 'iban', priority);
+        // BIC/SWIFT-Codes (nur mit Schlüsselwort) – gleiche Kategorie wie IBAN.
+        for (const m of text.matchAll(BIC_RX)) {
+            const g = m.groups?.bic;
+            if (g) {
+                const start = m.indices.groups.bic[0];
+                result.push({ start, length: g.length, original: g, category: 'iban', priority });
+            }
+        }
     }
 
     priority++;
@@ -292,6 +318,16 @@ function collect(text, options, llmFindings) {
     priority++;
     if (options.refs) {
         addMatches(result, text, UID_RX, 'ref', priority);
+        // Fahrgestellnummer (VIN): der ganze Treffer ist die Nummer.
+        addMatches(result, text, VIN_RX, 'ref', priority);
+        // Europäische USt-IdNr./VAT (nur mit Schlüsselwort) – nur die Nummer ersetzen.
+        for (const m of text.matchAll(VAT_RX)) {
+            const g = m.groups?.vat;
+            if (g) {
+                const start = m.indices.groups.vat[0];
+                result.push({ start, length: g.length, original: g, category: 'ref', priority });
+            }
+        }
         for (const m of text.matchAll(REFERENCE_RX)) {
             const g = m.groups?.ref;
             if (!g) {

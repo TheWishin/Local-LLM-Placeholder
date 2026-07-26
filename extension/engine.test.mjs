@@ -169,6 +169,33 @@ check('DSG: sensible Kategorie abschaltbar',
 check('DSG: Parse health -> sensitive', parseEntities('{"entities":[{"text":"Diabetes","category":"health"}]}')[0].category === 'sensitive');
 check('DSG: Parse ip -> ip', parseEntities('{"entities":[{"text":"10.0.0.5","category":"ip"}]}')[0].category === 'ip');
 
+// --- Neue Detektoren: VIN, BIC/SWIFT, USt-IdNr/VAT ---
+const vinText = 'Fahrzeug FIN 1HGBH41JXMN109186 im Vertrag.';
+const vin = anonymize(vinText, defaultOptions());
+check('VIN erkannt und ersetzt', !vin.anonymizedText.includes('1HGBH41JXMN109186') && vin.anonymizedText.includes('[REFERENZ_1]'));
+check('VIN: als Referenz-Kategorie', vin.mappings.some(m => m.category === 'ref' && m.original === '1HGBH41JXMN109186'));
+check('VIN: 16 Zeichen sind keine VIN', anonymize('Kurz 1HGBH41JXMN10918 Ende.', defaultOptions()).anonymizedText.includes('1HGBH41JXMN10918'));
+check('VIN: Round-Trip', deanonymize(vin.anonymizedText, vin.mappings) === vinText);
+
+const bicText = 'Bank BIC: DEUTDEFF500 und SWIFT-Code: UBSWCHZH80A.';
+const bic = anonymize(bicText, defaultOptions());
+check('BIC (11) erkannt', !bic.anonymizedText.includes('DEUTDEFF500') && bic.anonymizedText.includes('[IBAN_1]'));
+check('SWIFT (11) erkannt', !bic.anonymizedText.includes('UBSWCHZH80A'));
+check('BIC: als IBAN-Kategorie', bic.mappings.some(m => m.category === 'iban' && m.original === 'DEUTDEFF500'));
+check('BIC: kurzer BIC (8) erkannt', !anonymize('BIC DEUTDEFF hier.', defaultOptions()).anonymizedText.includes('DEUTDEFF'));
+check('BIC: 8-Buchstaben-Wort ohne Schlüsselwort ist kein BIC', anonymize('Der Code DEUTDEFF ohne Kontext.', defaultOptions()).anonymizedText.includes('DEUTDEFF'));
+check('BIC: Round-Trip', deanonymize(bic.anonymizedText, bic.mappings) === bicText);
+
+const vatText = 'USt-IdNr.: DE123456789, VAT: ATU12345678, N. IVA: IT12345678901, TVA: FR12345678901.';
+const vat = anonymize(vatText, defaultOptions());
+check('VAT DE erkannt', !vat.anonymizedText.includes('DE123456789'));
+check('VAT AT erkannt', !vat.anonymizedText.includes('ATU12345678'));
+check('VAT IT erkannt', !vat.anonymizedText.includes('IT12345678901'));
+check('VAT FR erkannt', !vat.anonymizedText.includes('FR12345678901'));
+check('VAT: als Referenz-Kategorie', vat.mappings.some(m => m.category === 'ref' && m.original === 'DE123456789'));
+check('VAT: Nummer ohne Schlüsselwort bleibt', anonymize('Wert DE123456789 im Text.', defaultOptions()).anonymizedText.includes('DE123456789'));
+check('VAT: Round-Trip', deanonymize(vat.anonymizedText, vat.mappings) === vatText);
+
 // --- SQL-Skript-Rundlauf: Platzhalter tolerant zurückersetzen ---
 const sqlMappings = [
     { placeholder: '[NAME_1]', original: 'Max Muster', category: 'name' },
