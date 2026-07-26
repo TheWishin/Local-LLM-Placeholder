@@ -9,6 +9,8 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-26
+
 ### Added
 - **Image anonymization (OCR) in the browser extension.** Pick a screenshot or
   scan and the extension reads the text **locally** with a bundled Tesseract.js
@@ -17,6 +19,9 @@ detection logic and are versioned together.
   Nothing is uploaded. The OCR assets (~30 MB) ship inside the released
   extension ZIP; when working from source, run `scripts/fetch-ocr-assets.sh`
   once to add them.
+- **New detectors in both engines:** vehicle identification numbers (VIN),
+  BIC/SWIFT codes (keyword-anchored), and European VAT / USt-IdNr numbers
+  (keyword-anchored). They reuse existing placeholder categories.
 - CI now runs the extension image test suite (`extension/image.test.mjs`) and
   packages the OCR assets into the release extension ZIP.
 
