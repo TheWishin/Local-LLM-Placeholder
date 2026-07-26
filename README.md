@@ -80,6 +80,26 @@ values. A notification tells you how many values were replaced (and warns you if
 any special-category data was involved). This uses fast pattern detection and
 shares its mapping with the popup, so the two work together.
 
+## Feature matrix
+
+Both editions share the same detection engine; each also has a few features that
+only make sense on its platform. See the [changelog](CHANGELOG.md) for the
+version history.
+
+| Feature | Desktop app | Browser extension |
+|---|:---:|:---:|
+| Text anonymize / restore (de-anonymize) | ✅ | ✅ |
+| 4 UI languages (DE / EN / FR / IT) | ✅ | ✅ |
+| Local-LLM (Ollama) detection, zero-config | ✅ | ✅ |
+| Special-category (revDSG) data detection | ✅ | ✅ |
+| Persistent mapping + export / import (JSON) | ✅ | ✅ |
+| Allowed values (👁 click-to-allow) & custom terms | ✅ | ✅ |
+| Right-click context menu (anonymize/restore selection) | — | ✅ |
+| Image OCR redaction (black out PII in screenshots) | — | ✅ |
+| One-click installers (auto-installs Ollama) | ✅ | — |
+
+✅ = available · — = not applicable to this edition.
+
 ## Built for Swiss data protection (revDSG / nFADP)
 
 The tool is designed to help you work with personal data in line with the
@@ -96,6 +116,27 @@ number**, the **UID** (`CHE-123.456.789`), canton **licence plates**, and
 **IP addresses** (personal data under the revDSG).
 
 *Detection is an aid and does not replace your own review. This is not legal advice.*
+
+### revDSG data-category mapping
+
+The revDSG distinguishes **ordinary personal data** from **special-category
+personal data** (*besonders schützenswerte Personendaten*, Art. 5 lit. c
+revDSG), which needs stricter handling. This is how the tool's detected
+categories line up with that distinction:
+
+| revDSG data category | Detected categories (placeholder) |
+|---|---|
+| **Special-category personal data** (*besonders schützenswerte Personendaten*) — health, religion/ideology, political or trade-union views, racial/ethnic origin, genetic & biometric data, administrative/criminal proceedings | Sensitive data (`[SENSITIVE_n]` / `[SENSIBEL_n]`, detected by the local LLM) |
+| **Ordinary personal data** — identifies a person but is not special-category | Names (`[NAME]`), e-mail (`[EMAIL]`), phone (`[TELEFON]`/`[PHONE]`), street (`[ADRESSE]`/`[ADDRESS]`), postal code & town (`[ORT]`/`[CITY]`), birth date (`[DATUM]`/`[DATE]`), IBAN (`[IBAN]`), credit card (`[KARTE]`/`[CARD]`), AHV number / SSN (`[AHV]`/`[SSN]`), health-insurance card number (`[AHV]`/`[SSN]`), reference/policy/case numbers & UID (`[REFERENZ]`/`[REFERENCE]`), licence plates (`[KENNZEICHEN]`/`[PLATE]`), IP addresses (`[IP]`) |
+| **Not personal data of a natural person** (still detectable) | Companies & organizations (`[FIRMA]`/`[COMPANY]`), custom terms (`[BEGRIFF]`/`[TERM]`) |
+
+Only the LLM-driven *Sensitive data* category is flagged and warned about as
+special-category. Some identifiers (e.g. the AHV number or the health-insurance
+card number) can appear in health or social-assistance contexts; the tool
+replaces them as ordinary identifiers, so classify them yourself when the
+surrounding context is sensitive.
+
+*This mapping is a practical aid, not legal advice — confirm the classification for your own use case.*
 
 ### Typical use cases
 
@@ -306,6 +347,52 @@ The desktop app (C#) and the browser extension (JavaScript) share the same
 detection logic on purpose, so a rule you add in one place is easy to mirror in
 the other. Category colours, placeholder labels and all UI text are centralised
 and localised in four languages.
+
+## FAQ
+
+**Is it really local?**
+Yes. Detection, anonymization and de-anonymization all run on your machine – the
+desktop app in your browser session, the extension inside the browser. The
+mapping table (placeholder → original value) is never uploaded; the optional AI
+talks only to Ollama on `localhost`.
+
+**Does it need an internet connection?**
+No, for the core work. The only things that touch the network are optional and
+one-time: installing Ollama and downloading its model (the desktop installer can
+do both for you), and – when building the extension from source – fetching the
+OCR files. Your case texts and images never leave the machine.
+
+**What if Ollama isn't installed?**
+Everything still works with pattern detection. The optional AI simply stays off
+until Ollama is present. The app and extension re-check when you click
+*Anonymize*, so starting Ollama later is picked up without a reload.
+
+**Is the AI required?**
+No – it's optional. Patterns already cover structured data (e-mails, IBANs,
+phone numbers, dates, …). The local LLM adds the things patterns miss: names
+without a salutation, company names, and special-category (revDSG) data.
+
+**How do I add my own terms?**
+Use the **Custom terms** list (one per line) for values that should *always* be
+replaced – company names, project names, a name with no salutation. Use
+**Allowed values** for the opposite: click 👁 next to a mapping entry (or edit
+the list) to keep a value visible so it is *never* replaced. Both lists are
+stored locally and work in the app and the extension.
+
+**How does the image OCR redaction work?**
+It's in the browser extension: expand *"Anonymize image (OCR)"* and pick a
+screenshot or scan. A bundled Tesseract.js worker reads the text **locally**
+(German + English), the same detection runs on it, and the personal-data areas
+are **blacked out** in the image for you to download. Nothing is uploaded. The
+OCR files ship inside the released extension ZIP; from source, run
+`./scripts/fetch-ocr-assets.sh` once.
+
+**How do I make my own version?**
+The project is MIT-licensed – fork it, rebrand it and ship your own build. The
+[CONTRIBUTING guide](CONTRIBUTING.md#make-your-own-version-fork-guide) walks
+through changing the name/icons, adding detection rules in both
+`AnonymizerService.cs` and `extension/engine.js`, picking a different AI model,
+and letting GitHub Actions build the packages.
 
 ## Important note
 

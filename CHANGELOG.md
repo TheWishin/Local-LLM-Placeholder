@@ -1,0 +1,121 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The desktop app (C#) and the browser extension (JavaScript) share the same
+detection logic and are versioned together.
+
+## [Unreleased]
+
+### Added
+- **Image anonymization (OCR) in the browser extension.** Pick a screenshot or
+  scan and the extension reads the text **locally** with a bundled Tesseract.js
+  worker (German + English), runs the same detection as the text engine, and
+  **blacks out** the personal-data areas in the image for you to download.
+  Nothing is uploaded. The OCR assets (~30 MB) ship inside the released
+  extension ZIP; when working from source, run `scripts/fetch-ocr-assets.sh`
+  once to add them.
+- CI now runs the extension image test suite (`extension/image.test.mjs`) and
+  packages the OCR assets into the release extension ZIP.
+
+## [1.5.1] - 2026-07-24
+
+### Fixed
+- Extension **Paste** button now works: added the `clipboardRead` permission so
+  Chrome/Edge can read the clipboard on click.
+- Fixed a crash in the right-click context menu.
+- AI (Ollama) detection made non-blocking, so anonymization no longer stalls the
+  popup while the local LLM is being checked.
+
+## [1.5.0] - 2026-07-24
+
+### Added
+- **Special-category (revDSG) data warning:** a `⚠️` notice reports how many
+  *besonders schützenswerte Personendaten* were detected so they can be reviewed
+  with extra care.
+- **Right-click context menu (extension):** select text on any web page and
+  choose *"🔒 Anonymize selection (copy)"* or *"🔓 Restore selection (copy)"*.
+  It uses fast pattern detection and shares its mapping with the popup.
+
+## [1.4.0] - 2026-07-24
+
+### Added
+- **Copy and paste buttons** in the app and extension for a smoother round trip.
+- **Open-sourced under the MIT license**, with a "Make your own version" fork
+  guide in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Changed
+- Visual polish across the app and popup.
+
+## [1.3.0] - 2026-07-24
+
+### Added
+- **One-click installers** bundled into the desktop release (Windows, macOS,
+  Linux): first run installs the local AI (Ollama) by itself, downloads a small
+  model, starts the app and opens the browser at `http://localhost:5100`.
+- Browser opens automatically when the app starts.
+- **Swiss-revDSG-aware detectors:** UID (`CHE-123.456.789`), health-insurance
+  card number, and IP addresses (IPv4/IPv6, personal data under the revDSG).
+
+## [1.2.0] - 2026-07-24
+
+### Changed
+- Friendlier, easier-to-understand UI for non-technical testers, including a
+  short **"How it works"** strip (1 Anonymize → 2 Use in your AI tool →
+  3 Translate back).
+
+## [1.1.0] - 2026-07-24
+
+### Added
+- **Persistent mapping table:** the placeholder round trip now works for SQL
+  scripts and across later sessions — the mapping is kept locally until you
+  delete it, so answers or scripts can be translated back the next day.
+- Manual trigger for the release workflow (via *Run workflow*), alongside the
+  push-a-tag trigger.
+
+### Fixed
+- Release build: renamed the `VERSION` environment variable to
+  `RELEASE_VERSION` so MSBuild no longer rejects `v1.0.0` as a .NET version.
+
+## [1.0.0] - 2026-07-24
+
+Initial release.
+
+### Added
+- **Local Blazor desktop web app** that detects personal data in case texts and
+  replaces it with consistent placeholders like `[NAME_1]` / `[EMAIL_2]`.
+  Everything runs 100% locally; the mapping table lives only in memory.
+- **Four UI languages** — German, English, French, Italian — with
+  language-specific placeholder labels (`[TELEFON_1]` / `[PHONE_1]` /
+  `[TELEPHONE_1]` / `[TELEFONO_1]`).
+- **Pattern detection** across all four languages: names (after a salutation or
+  keyword), e-mail addresses, phone numbers (CH/international/US), streets,
+  postal codes & towns, IBAN, Swiss AHV number & US SSN, credit cards (Luhn
+  check), reference/policy/case numbers, CH licence plates, and birth dates.
+- **Optional local LLM (Ollama) detection, zero-config:** enabled by default and
+  activated as soon as Ollama is found; catches names without a salutation,
+  companies/organizations and free-text personal data. Missing models are
+  downloaded automatically on first use. Without Ollama the app runs on patterns
+  only.
+- **De-anonymize round trip:** restore original values from an AI answer, with
+  tolerant matching of reformatted placeholders (`[ name_1 ]`, `[Name_1]`).
+- **Custom terms** (always replaced) and **allowed values** (never replaced;
+  click 👁 in the mapping table to keep a value visible).
+- **Chrome/Edge browser extension** with the same detection engine ported to
+  JavaScript, the same four UI languages, custom terms and allowed values, and a
+  mapping that lives in the browser session. Installs without admin rights.
+- **Export/import** the mapping as a JSON file, with an identical format shared
+  between the app and the extension.
+- GitHub Actions build/test and release automation producing self-contained
+  Windows/Linux/macOS packages and the browser-extension ZIP.
+
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.0.0...HEAD
+[1.5.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.5.1
+[1.5.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.5.0
+[1.4.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.4.0
+[1.3.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.3.0
+[1.2.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.2.0
+[1.1.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.1.0
+[1.0.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.0.0
