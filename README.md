@@ -65,6 +65,13 @@ AI tool → 3 Translate back). Everything runs 100% locally; the optional AI
 > - *Paste button does nothing:* allow clipboard access when Chrome asks (the
 >   extension needs `clipboardRead` for the Paste button – v1.5.1+).
 
+**🖼️ Anonymize images (OCR):** open the extension, expand *"Anonymize image
+(OCR)"*, pick a screenshot or scan – the extension reads the text **locally**
+(Tesseract.js, bundled), finds the personal data and **blacks it out** in the
+image, which you can then download. Nothing is uploaded. The OCR files (~30 MB,
+German + English) ship inside the released extension ZIP; when working from
+source, run `./scripts/fetch-ocr-assets.sh` once to add them.
+
 **Right-click anywhere:** select text on any web page (e.g. in a ChatGPT or
 Claude input box), right-click, and choose **"🔒 Anonymize selection (copy)"** –
 the anonymized text is put on your clipboard, ready to paste back. Later,

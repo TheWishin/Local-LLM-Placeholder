@@ -77,6 +77,29 @@
         </details>
     </section>
 
+    <section id="imageSection">
+        <details>
+            <summary id="imageTitle"></summary>
+            <p class="muted small" id="imageHint"></p>
+            <div id="imageUnavailable" class="muted small hidden"></div>
+            <div id="imageControls">
+                <input type="file" id="imageFile" accept="image/*" />
+                <div class="btn-row">
+                    <button id="imageRunBtn" class="primary" disabled></button>
+                </div>
+                <div id="imageProgressWrap" class="progress hidden"><div id="imageProgressBar" class="progress-bar"></div></div>
+                <div id="imageStatus" class="muted small"></div>
+                <div id="imageSensitive" class="warn small hidden"></div>
+                <div id="imageResult" class="hidden">
+                    <canvas id="imageCanvas" class="redacted-canvas"></canvas>
+                    <div class="btn-row">
+                        <button id="imageDownloadBtn" class="ghost small-btn"></button>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </section>
+
     <section>
         <details>
             <summary id="settingsTitle"></summary>

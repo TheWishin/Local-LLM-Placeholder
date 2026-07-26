@@ -26,4 +26,6 @@ jobs:
           node-version: 22
 
       - name: Test browser extension engine
-        run: node extension/engine.test.mjs
+        run: |
+          node extension/engine.test.mjs
+          node extension/image.test.mjs

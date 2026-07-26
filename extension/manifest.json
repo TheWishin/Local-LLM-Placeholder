@@ -23,9 +23,29 @@
         "service_worker": "background.js",
         "type": "module"
     },
-    "permissions": ["storage", "clipboardWrite", "clipboardRead", "contextMenus", "notifications", "offscreen"],
+    "permissions": [
+        "storage",
+        "clipboardWrite",
+        "clipboardRead",
+        "contextMenus",
+        "notifications",
+        "offscreen"
+    ],
     "host_permissions": [
         "http://localhost:11434/*",
         "http://127.0.0.1:11434/*"
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "vendor/tesseract/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
     ]
 }

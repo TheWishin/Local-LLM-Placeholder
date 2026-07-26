@@ -5,3 +5,6 @@ publish-*/
 *.user
 .vs/
 .idea/
+
+# Bundled OCR assets (fetched by scripts/fetch-ocr-assets.sh, shipped in releases)
+extension/vendor/

@@ -5,6 +5,7 @@
 
 import { anonymize, deanonymize, labelFor, defaultOptions } from './engine.js';
 import * as ollama from './ollama.js';
+import * as imaging from './image.js';
 import { LANGUAGES, STRINGS, detectLanguage, format } from './i18n.js';
 
 const $ = id => document.getElementById(id);
@@ -125,6 +126,11 @@ function renderTexts() {
     $('llmErrorNote').textContent = s.llmError;
     $('footerNote').textContent = s.footer;
     $('dsgNote').textContent = s.dsgNote;
+    $('imageTitle').textContent = s.imageTitle;
+    $('imageHint').textContent = s.imageHint;
+    $('imageUnavailable').textContent = s.imageUnavailable;
+    $('imageRunBtn').textContent = s.imageRun;
+    $('imageDownloadBtn').textContent = s.imageDownload;
 
     const grid = $('optionsGrid');
     grid.innerHTML = '';
@@ -608,10 +614,112 @@ async function main() {
     $('inputText').addEventListener('input', saveSession);
     $('responseText').addEventListener('input', saveSession);
 
+    initImage();
+
     renderTexts();
     if (state.llmEnabled) {
         ensureLlm({ allowPull: false });
     }
+}
+
+// ---- Bild-Anonymisierung (OCR) --------------------------------------------
+
+let redactedCanvas = null;
+
+async function initImage() {
+    const available = await imaging.isOcrAvailable();
+    if (!available) {
+        // OCR-Dateien fehlen (z.B. aus dem Quellcode geladen) → Hinweis zeigen,
+        // Rest der Erweiterung bleibt voll funktionsfähig.
+        $('imageUnavailable').classList.remove('hidden');
+        $('imageControls').classList.add('hidden');
+        return;
+    }
+    $('imageFile').addEventListener('change', () => {
+        $('imageRunBtn').disabled = !$('imageFile').files?.[0];
+        $('imageResult').classList.add('hidden');
+        $('imageStatus').textContent = '';
+        $('imageSensitive').classList.add('hidden');
+    });
+    $('imageRunBtn').addEventListener('click', runImageRedaction);
+    $('imageDownloadBtn').addEventListener('click', downloadRedacted);
+}
+
+async function runImageRedaction() {
+    const file = $('imageFile').files?.[0];
+    if (!file) {
+        return;
+    }
+    const s = t();
+    $('imageRunBtn').disabled = true;
+    $('imageResult').classList.add('hidden');
+    $('imageSensitive').classList.add('hidden');
+    $('imageProgressWrap').classList.remove('hidden');
+    $('imageProgressBar').style.width = '5%';
+    $('imageStatus').textContent = format(s.imageReading, 0);
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        const langs = ocrLangsFor(state.lang);
+        const words = await imaging.ocrWords(file, langs, pc => {
+            $('imageProgressBar').style.width = `${pc}%`;
+            $('imageStatus').textContent = format(s.imageReading, pc);
+        });
+
+        const options = {
+            ...state.options,
+            language: state.lang,
+            customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean),
+            allowedTerms: allowedTermsList()
+        };
+        const plan = imaging.planImageRedaction(words, options);
+        redactedCanvas = imaging.drawRedacted(bitmap, plan.boxes);
+
+        const preview = $('imageCanvas');
+        preview.width = redactedCanvas.width;
+        preview.height = redactedCanvas.height;
+        preview.getContext('2d').drawImage(redactedCanvas, 0, 0);
+
+        $('imageProgressWrap').classList.add('hidden');
+        $('imageStatus').textContent = plan.boxes.length > 0 ? format(s.imageDone, plan.boxes.length) : s.imageNone;
+        $('imageDownloadBtn').textContent = s.imageDownload;
+        $('imageResult').classList.remove('hidden');
+
+        const sensitive = plan.mappings.filter(m => m.category === 'sensitive').length;
+        if (sensitive > 0) {
+            $('imageSensitive').textContent = format(s.sensitiveWarning, sensitive);
+            $('imageSensitive').classList.remove('hidden');
+        }
+    } catch (e) {
+        $('imageProgressWrap').classList.add('hidden');
+        $('imageStatus').textContent = s.imageError;
+    } finally {
+        $('imageRunBtn').disabled = false;
+    }
+}
+
+// OCR-Sprachen: gewählte UI-Sprache zuerst, Englisch als Rückfall (beide gebündelt).
+function ocrLangsFor(lang) {
+    const map = { de: 'deu', en: 'eng', fr: 'fra', it: 'ita' };
+    const primary = map[lang] ?? 'eng';
+    return primary === 'eng' ? 'eng' : `${primary}+eng`;
+}
+
+function downloadRedacted() {
+    if (!redactedCanvas) {
+        return;
+    }
+    redactedCanvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        a.download = `redacted-${stamp}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 'image/png');
 }
 
 main();

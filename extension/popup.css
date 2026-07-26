@@ -166,3 +166,8 @@ td code { font-size: 11px; }
 .cat-sensitive{background:#b91c1c;box-shadow:0 0 0 2px rgba(185,28,28,.3)}
 .cat-summary { margin: 4px 0 8px; }
 .cat-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+/* Bild-Anonymisierung */
+#imageControls .btn-row { margin-top: 8px; }
+.redacted-canvas { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; margin-top: 8px; display: block; }
+#imageFile { font-size: 12px; }
