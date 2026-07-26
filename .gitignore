@@ -8,3 +8,6 @@ publish-*/
 
 # Bundled OCR assets (fetched by scripts/fetch-ocr-assets.sh, shipped in releases)
 extension/vendor/
+
+# Claude Code agent worktrees and local state
+.claude/
