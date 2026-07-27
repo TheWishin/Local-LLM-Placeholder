@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json.Nodes;
+using DataAnonymizer.Proxy;
 using DataAnonymizer.Services;
 
 var svc = new AnonymizerService();
@@ -348,6 +350,103 @@ using (var offlineClient = new LocalLlmClient(new LocalLlmOptions { Endpoint = $
     var offlineState = await offlineClient.GetStateAsync();
     Check("Ollama-State: offline erkannt", offlineState is { Reachable: false, Models.Count: 0 });
 }
+
+// =====================================================================
+// API-Gateway (DataAnonymizer.Proxy): Anonymisierungs-Round-Trip
+// =====================================================================
+Console.WriteLine();
+Console.WriteLine("=== API-GATEWAY ===");
+
+// AnonymizeMany: gemeinsame Zuordnung über mehrere Texte hinweg.
+var manyOpts = new AnonymizerOptions { Language = AppLanguage.En };
+var many = svc.AnonymizeMany(
+    new[] { "Mail: max.muster@example.ch", "Nochmals max.muster@example.ch und CH93 0076 2011 6238 5295 7" },
+    manyOpts);
+Check("AnonymizeMany: gleicher Wert → gleicher Platzhalter über Texte",
+    many.AnonymizedTexts[0].Contains("[EMAIL_1]") && many.AnonymizedTexts[1].Contains("[EMAIL_1]"));
+Check("AnonymizeMany: zweiter Text hat eigene IBAN-Kategorie",
+    many.AnonymizedTexts[1].Contains("[IBAN_1]") && !many.AnonymizedTexts[1].Contains("CH93"));
+Check("AnonymizeMany: Mapping enthält genau E-Mail + IBAN", many.Mappings.Count == 2);
+
+// Anfrage-Body umschreiben: System + zwei Nachrichten (String + Block-Liste), stream bleibt.
+var reqJson = """
+{"model":"claude-3-5-sonnet","max_tokens":200,"stream":true,
+ "system":"Bitte hilf. Mail: max.muster@example.ch",
+ "messages":[
+   {"role":"user","content":"Nochmals: max.muster@example.ch"},
+   {"role":"user","content":[{"type":"text","text":"IBAN CH93 0076 2011 6238 5295 7"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"AAAA"}}]}
+ ]}
+""";
+var rew = AnthropicRewriter.AnonymizeRequestBody(reqJson, svc, new AnonymizerOptions { Language = AppLanguage.En });
+Check("Gateway-Request: E-Mail ersetzt", !rew.Json.Contains("max.muster@example.ch") && rew.Json.Contains("[EMAIL_1]"));
+Check("Gateway-Request: IBAN ersetzt", !rew.Json.Contains("CH93 0076 2011 6238 5295 7") && rew.Json.Contains("[IBAN_1]"));
+Check("Gateway-Request: stream-Flag bleibt erhalten", rew.Json.Contains("\"stream\":true") || rew.Json.Contains("\"stream\": true"));
+Check("Gateway-Request: Bild-Block bleibt unangetastet", rew.Json.Contains("image/png") && rew.Json.Contains("\"data\":\"AAAA\""));
+Check("Gateway-Request: Mapping = E-Mail + IBAN", rew.Mappings.Count == 2);
+// Body bleibt gültiges JSON.
+var reparse = false;
+try { JsonNode.Parse(rew.Json); reparse = true; } catch { }
+Check("Gateway-Request: Ergebnis ist gültiges JSON", reparse);
+
+// Antwort (nicht gestreamt) zurückübersetzen – inkl. Platzhalter im SQL-Tool-Argument.
+var respJson = """
+{"id":"msg_1","type":"message","role":"assistant","content":[
+  {"type":"text","text":"Ich melde mich bei [EMAIL_1]."},
+  {"type":"tool_use","id":"t1","name":"run_sql","input":{"query":"SELECT * FROM kunden WHERE iban = '[IBAN_1]'"}}
+]}
+""";
+var restoredResp = AnthropicRewriter.DeanonymizeResponseBody(respJson, rew.Mappings, svc);
+Check("Gateway-Response: E-Mail wiederhergestellt", restoredResp.Contains("max.muster@example.ch") && !restoredResp.Contains("[EMAIL_1]"));
+Check("Gateway-Response: IBAN im SQL wiederhergestellt", restoredResp.Contains("CH93 0076 2011 6238 5295 7") && !restoredResp.Contains("[IBAN_1]"));
+var respParse = false;
+try { JsonNode.Parse(restoredResp); respParse = true; } catch { }
+Check("Gateway-Response: bleibt gültiges JSON", respParse);
+
+// Streaming (SSE): Platzhalter über zwei Chunks verteilt wird korrekt zusammengesetzt.
+var nameMappings = new List<MappingEntry> { new("[NAME_1]", "Max Muster", PiiCategory.Name) };
+var sse = new SseDeanonymizer(nameMappings, svc);
+var sseOut = new StringBuilder();
+sseOut.Append(sse.Push(
+    "event: content_block_start\n" +
+    "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n" +
+    "event: content_block_delta\n" +
+    "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hallo [NA\"}}\n\n"));
+sseOut.Append(sse.Push(
+    "event: content_block_delta\n" +
+    "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"ME_1]!\"}}\n\n" +
+    "event: content_block_stop\n" +
+    "data: {\"type\":\"content_block_stop\",\"index\":0}\n\n"));
+sseOut.Append(sse.Complete());
+var sseText = sseOut.ToString();
+Check("Gateway-Stream: geteilter Platzhalter wird zusammengesetzt", sseText.Contains("Max Muster"));
+Check("Gateway-Stream: kein Platzhalter-Rest im Strom", !sseText.Contains("[NAME_1]") && !sseText.Contains("[NA"));
+Check("Gateway-Stream: Stop-Ereignis bleibt erhalten", sseText.Contains("content_block_stop"));
+
+// Streaming eines Tool-Arguments (input_json_delta): Platzhalter im JSON-Fragment.
+var ibanMappings = new List<MappingEntry> { new("[IBAN_1]", "CH93 0076 2011 6238 5295 7", PiiCategory.Iban) };
+var sse2 = new SseDeanonymizer(ibanMappings, svc);
+var delta2 = new JsonObject { ["type"] = "input_json_delta", ["partial_json"] = "{\"q\":\"[IBAN_1]\"}" };
+var evt2 = new JsonObject { ["type"] = "content_block_delta", ["index"] = 0, ["delta"] = delta2 };
+var sse2Out = sse2.Push("event: content_block_delta\ndata: " + evt2.ToJsonString() + "\n\n")
+    + sse2.Push("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n")
+    + sse2.Complete();
+Check("Gateway-Stream: Platzhalter im Tool-JSON wiederhergestellt", sse2Out.Contains("CH93 0076 2011 6238 5295 7") && !sse2Out.Contains("[IBAN_1]"));
+var sse2ParseOk = true;
+foreach (var l in sse2Out.Split('\n'))
+{
+    if (l.StartsWith("data: {"))
+    {
+        try { JsonNode.Parse(l["data: ".Length..]); } catch { sse2ParseOk = false; }
+    }
+}
+Check("Gateway-Stream: Datenzeilen bleiben gültiges JSON", sse2ParseOk);
+
+// JSON-Escaping für Streaming-Fragmente (Wert mit Anführungszeichen).
+Check("JsonEscapeInner escaped Anführungszeichen", AnthropicRewriter.JsonEscapeInner("a\"b") == "a\\\"b");
+
+// Sprache konfigurierbar.
+Check("ProxyOptions: Sprache 'de' → De", ProxyOptions.ParseLanguage("de") == AppLanguage.De);
+Check("ProxyOptions: Sprache leer → En", ProxyOptions.ParseLanguage(null) == AppLanguage.En);
 
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "ALLE TESTS BESTANDEN" : $"{failures} TEST(S) FEHLGESCHLAGEN");

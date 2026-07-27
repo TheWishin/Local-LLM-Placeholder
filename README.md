@@ -190,6 +190,21 @@ Any installed chat model can be picked in the sidebar (`qwen2.5:3b` or
 them). Endpoint and default model can be changed in
 `src/DataAnonymizer/appsettings.json` under `LocalLlm`.
 
+### Company-hosted Ollama (not only localhost)
+
+Instead of running a model on every laptop, IT can host **one Ollama on a
+server** and point everything at it:
+
+- **Desktop app & gateway:** set the environment variables `OLLAMA_HOST`
+  (e.g. `http://ollama.company.internal:11434`) and optionally `OLLAMA_MODEL`.
+  They override `appsettings.json`, so no file edits are needed.
+- **Browser extension:** enter the server address under *Settings → AI server
+  (Ollama) address*. The extension asks for permission to reach that host once,
+  then uses it for all AI detection.
+
+The traffic to your internal server stays inside your network; nothing goes to
+the public internet.
+
 ## 🧩 Browser extension (Chrome & Edge, Mac & Windows)
 
 The same anonymizer is also available as a **browser extension** – no .NET, no
@@ -217,6 +232,46 @@ languages as the app, and de-anonymizes answers again. The mapping table lives o
 discarded when the browser closes. If Ollama is installed, the extension finds
 it automatically and downloads the default model on first use – exactly like
 the app.
+
+## 🌐 API-Gateway (transparent anonymizing proxy)
+
+Besides the app and the extension there is a third way to use it: a local
+**API gateway** that sits *between* your AI client and the real Claude server
+and does the whole round trip for you automatically.
+
+```
+   your app ──▶ [gateway: anonymize] ──▶ Claude server
+   your app ◀── [gateway: restore]   ◀── Claude server
+```
+
+Point any Anthropic-API client at the gateway instead of `api.anthropic.com`:
+
+```bash
+export ANTHROPIC_BASE_URL="http://localhost:8080"
+export ANTHROPIC_API_KEY="sk-ant-..."   # your real key, only forwarded
+```
+
+- Confidential data (names, e-mails, IBAN, AHV, health details, …) is replaced
+  with placeholders **before the request leaves your machine**, and the original
+  values are put back into the answer.
+- Works for **streaming (SSE)** responses and even restores placeholders inside
+  **tool arguments** – so an AI-generated SQL script comes back with the real
+  values already filled in.
+- The API key is only passed through, never stored or logged. Everything runs
+  locally; the optional company-hosted Ollama can be used for detection too
+  (`ANONYMIZER_USE_LLM=true`).
+- Config via environment variables: `ANONYMIZER_UPSTREAM`, `ANONYMIZER_LANGUAGE`
+  (`En`/`De`/`Fr`/`It`), `ANONYMIZER_USE_LLM`, `OLLAMA_HOST`, `OLLAMA_MODEL`.
+
+Ready-to-run, self-starting packages ship per platform
+(`DataAnonymizer-Gateway-<version>-<os>.zip`) – unzip and run the start script.
+Works with the Anthropic SDK, Claude Code and any tool with a configurable base
+URL.
+
+> **Note:** the official Claude desktop/web app (claude.ai) cannot be redirected
+> to a custom server – that's a limitation of the app, not of the gateway. The
+> gateway is for API-based usage; for the normal app, use the browser extension
+> or the desktop app.
 
 ## Workflow
 
@@ -325,6 +380,7 @@ git push origin v1.0.0
 ```
 src/DataAnonymizer/          Blazor web app (UI, 4 languages)
 src/DataAnonymizer.Core/     Detection & replacement logic + Ollama client (no web dependencies)
+src/DataAnonymizer.Proxy/    API gateway: Anthropic-compatible anonymizing reverse proxy
 tests/DataAnonymizer.Tests/  Automated tests (dotnet run --project tests/DataAnonymizer.Tests)
 extension/                   Chrome/Edge extension (same engine ported to JavaScript;
                              tests: node extension/engine.test.mjs)

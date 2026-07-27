@@ -90,6 +90,16 @@ public sealed class AnonymizationResult
     public IReadOnlyList<MappingEntry> Mappings { get; init; } = Array.Empty<MappingEntry>();
 }
 
+/// <summary>
+/// Ergebnis der Anonymisierung mehrerer Texte mit gemeinsamer Zuordnungstabelle.
+/// Die Reihenfolge von <see cref="AnonymizedTexts"/> entspricht der Eingabe.
+/// </summary>
+public sealed class MultiAnonymizationResult
+{
+    public IReadOnlyList<string> AnonymizedTexts { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<MappingEntry> Mappings { get; init; } = Array.Empty<MappingEntry>();
+}
+
 /// <summary>Ein vom Benutzer definierter Begriff, der immer ersetzt wird.</summary>
 public sealed record CustomTerm(string Text);
 

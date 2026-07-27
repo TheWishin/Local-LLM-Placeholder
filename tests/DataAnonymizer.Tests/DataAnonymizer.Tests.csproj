@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DataAnonymizer.Core\DataAnonymizer.Core.csproj" />
+    <ProjectReference Include="..\..\src\DataAnonymizer.Proxy\DataAnonymizer.Proxy.csproj" />
   </ItemGroup>
 
 </Project>

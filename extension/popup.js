@@ -18,6 +18,7 @@ const state = {
     llmStatus: 'checking',   // checking | ready | offline | pulling | pullfailed
     llmModels: [],
     llmModel: '',
+    llmEndpoint: ollama.DEFAULT_ENDPOINT,   // localhost oder haus-internes Ollama
     pullPercent: 0,
     mappings: [],
     lastLlmFindings: null,
@@ -30,13 +31,14 @@ const t = () => STRINGS[state.lang];
 // ---- Persistenz -----------------------------------------------------------
 
 async function loadStored() {
-    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'allowedTerms', 'llmEnabled', 'llmModel', 'mappings']);
+    const local = await chrome.storage.local.get(['lang', 'options', 'customTerms', 'allowedTerms', 'llmEnabled', 'llmModel', 'llmEndpoint', 'mappings']);
     state.lang = local.lang ?? detectLanguage(navigator.language);
     state.options = { ...defaultOptions(), ...(local.options ?? {}) };
     state.customTermsText = local.customTerms ?? '';
     state.allowedTermsText = local.allowedTerms ?? '';
     state.llmEnabled = local.llmEnabled !== false; // Standard: an
     state.llmModel = local.llmModel ?? '';
+    state.llmEndpoint = (local.llmEndpoint || ollama.DEFAULT_ENDPOINT).replace(/\/+$/, '');
 
     // Die Zuordnung überlebt Browser-Neustarts, damit Antworten und Skripte
     // auch später noch zurückübersetzt werden können.
@@ -69,7 +71,8 @@ const saveLocal = () => chrome.storage.local.set({
     customTerms: state.customTermsText,
     allowedTerms: state.allowedTermsText,
     llmEnabled: state.llmEnabled,
-    llmModel: state.llmModel
+    llmModel: state.llmModel,
+    llmEndpoint: state.llmEndpoint
 });
 
 const saveSession = () => chrome.storage.session.set({
@@ -117,6 +120,8 @@ function renderTexts() {
     $('termsLabel').textContent = s.termsLabel;
     $('customTerms').placeholder = s.termsPlaceholder;
     $('allowedLabel').textContent = s.allowedLabel;
+    $('llmEndpointLabel').textContent = s.llmEndpointLabel;
+    $('llmEndpointHint').textContent = s.llmEndpointHint;
     $('exportMappingBtn').textContent = s.btnExportMapping;
     $('importMappingBtn').textContent = s.btnImportMapping;
     $('deleteMappingBtn').textContent = s.btnDeleteMapping;
@@ -354,13 +359,43 @@ function showResult(output, mappings) {
 
 // ---- Lokales LLM ----------------------------------------------------------
 
+/** Wandelt eine Endpoint-URL in ein Origin-Muster für chrome.permissions um. */
+function originPatternFor(endpoint) {
+    try {
+        const u = new URL(endpoint);
+        return `${u.protocol}//${u.hostname}${u.port ? ':' + u.port : ''}/*`;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Für ein haus-internes Ollama auf einem anderen Server braucht die Erweiterung
+ * eine Host-Berechtigung. localhost ist bereits im Manifest erlaubt; für alles
+ * andere fragen wir sie einmalig ab (nur bei Benutzeraktion erlaubt).
+ */
+async function ensureHostPermission(endpoint) {
+    const pattern = originPatternFor(endpoint);
+    if (!pattern) {
+        return false;
+    }
+    try {
+        if (await chrome.permissions.contains({ origins: [pattern] })) {
+            return true;
+        }
+        return await chrome.permissions.request({ origins: [pattern] });
+    } catch {
+        return false;
+    }
+}
+
 // Sorgt ohne Zutun des Benutzers dafür, dass die KI-Erkennung bereit wird:
 // Ollama suchen, Modell wählen, notfalls das Standardmodell herunterladen.
 async function ensureLlm({ allowPull = true } = {}) {
     state.llmStatus = 'checking';
     renderLlm();
 
-    const { reachable, models } = await ollama.getState();
+    const { reachable, models } = await ollama.getState(state.llmEndpoint);
     if (!reachable) {
         state.llmStatus = 'offline';
         renderLlm();
@@ -378,7 +413,7 @@ async function ensureLlm({ allowPull = true } = {}) {
         state.llmStatus = 'ready';
         renderLlm();
         saveLocal();
-        ollama.warmUp(pick);
+        ollama.warmUp(pick, state.llmEndpoint);
         return;
     }
 
@@ -402,7 +437,7 @@ async function ensureLlm({ allowPull = true } = {}) {
                 state.pullPercent = pc;
                 renderLlm();
             }
-        });
+        }, state.llmEndpoint);
     } catch {
         ok = false;
     }
@@ -439,7 +474,7 @@ async function runAnonymize() {
     let llmFindings = null;
     if (state.llmEnabled && state.llmStatus === 'ready' && state.llmModel && text.trim()) {
         try {
-            llmFindings = await ollama.detectPii(text, state.llmModel);
+            llmFindings = await ollama.detectPii(text, state.llmModel, state.llmEndpoint);
         } catch {
             $('llmErrorNote').classList.remove('hidden');
             state.llmStatus = 'offline';
@@ -540,9 +575,22 @@ async function main() {
     $('llmModelSelect').addEventListener('change', () => {
         state.llmModel = $('llmModelSelect').value;
         saveLocal();
-        ollama.warmUp(state.llmModel);
+        ollama.warmUp(state.llmModel, state.llmEndpoint);
     });
     $('llmRecheck').addEventListener('click', () => ensureLlm({ allowPull: false }));
+
+    // Adresse des KI-Servers (Ollama): localhost oder ein haus-internes Ollama.
+    $('llmEndpointInput').value = state.llmEndpoint;
+    $('llmEndpointInput').addEventListener('change', async () => {
+        const val = ($('llmEndpointInput').value || '').trim().replace(/\/+$/, '') || ollama.DEFAULT_ENDPOINT;
+        state.llmEndpoint = val;
+        $('llmEndpointInput').value = val;
+        saveLocal();
+        if (state.llmEnabled) {
+            await ensureHostPermission(val);
+            ensureLlm({ allowPull: false });
+        }
+    });
 
     $('exportMappingBtn').addEventListener('click', () => {
         if (state.mappings.length === 0) {

@@ -9,6 +9,29 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-27
+
+### Added
+- **API-Gateway (`DataAnonymizer.Proxy`), ein neues Release.** Ein lokaler,
+  Anthropic-kompatibler Reverse-Proxy für den vollen Round-Trip
+  *App → Gateway (anonymisieren) → Claude-Server → Gateway (zurückübersetzen) → App*.
+  Der Client zeigt einfach mit `ANTHROPIC_BASE_URL` auf das Gateway; vertrauliche
+  Daten werden durch Platzhalter ersetzt, bevor sie den Rechner verlassen, und in
+  der Antwort wieder eingesetzt – auch im Streaming (SSE) und in Tool-Argumenten
+  (z.B. von der KI erzeugte SQL-Skripte). Der API-Schlüssel wird nur durchgereicht,
+  nie gespeichert. Fertige, selbst-startende Pakete für Windows/macOS/Linux.
+- **Haus-internes Ollama (nicht nur localhost).** Die Ollama-Adresse ist jetzt
+  konfigurierbar – in der Erweiterung über ein Feld in den Einstellungen (mit
+  einmaliger Berechtigungsabfrage für den Server), in der Desktop-App und im
+  Gateway über die Umgebungsvariablen `OLLAMA_HOST` / `OLLAMA_BASE_URL` /
+  `OLLAMA_MODEL`. So kann die IT ein zentrales Ollama auf einem Server betreiben.
+
+### Notes
+- Die offizielle Claude-Desktop/Web-App (claude.ai) lässt sich technisch nicht auf
+  einen eigenen Server umleiten; das Gateway ist für API-basierte Nutzung gedacht
+  (Anthropic-SDK, Claude Code, eigene Apps). Für die normale App bleiben die
+  Browser-Erweiterung und die Desktop-App der Weg.
+
 ## [1.6.0] - 2026-07-26
 
 ### Added
@@ -116,7 +139,9 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.0
+[1.6.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.6.0
 [1.5.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.5.1
 [1.5.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.5.0
 [1.4.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.4.0

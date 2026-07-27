@@ -11,8 +11,21 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<AnonymizerService>();
 
 // Lokales LLM (Ollama): Endpoint/Modell sind in appsettings.json konfigurierbar.
+// Zusätzlich per Umgebungsvariable, damit die IT ein haus-internes Ollama auf einem
+// Server betreiben kann, ohne Dateien zu ändern: OLLAMA_HOST / OLLAMA_BASE_URL / OLLAMA_MODEL.
 var llmOptions = new LocalLlmOptions();
 builder.Configuration.GetSection("LocalLlm").Bind(llmOptions);
+var envEndpoint = Environment.GetEnvironmentVariable("OLLAMA_HOST")
+                  ?? Environment.GetEnvironmentVariable("OLLAMA_BASE_URL");
+if (!string.IsNullOrWhiteSpace(envEndpoint))
+{
+    llmOptions.Endpoint = envEndpoint;
+}
+var envModel = Environment.GetEnvironmentVariable("OLLAMA_MODEL");
+if (!string.IsNullOrWhiteSpace(envModel))
+{
+    llmOptions.Model = envModel;
+}
 builder.Services.AddSingleton(llmOptions);
 builder.Services.AddSingleton<LocalLlmClient>();
 

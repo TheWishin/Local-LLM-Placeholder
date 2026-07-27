@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>DataAnonymizer.Proxy</RootNamespace>
+    <AssemblyName>DataAnonymizer.Proxy</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DataAnonymizer.Core\DataAnonymizer.Core.csproj" />
+  </ItemGroup>
+
+</Project>

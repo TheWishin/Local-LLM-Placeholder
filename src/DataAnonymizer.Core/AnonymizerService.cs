@@ -273,52 +273,75 @@ public sealed class AnonymizerService
     /// </summary>
     public AnonymizationResult Anonymize(string text, AnonymizerOptions options, IReadOnlyCollection<LlmEntity>? llmFindings = null)
     {
-        if (string.IsNullOrEmpty(text))
-        {
-            return new AnonymizationResult();
-        }
+        var many = AnonymizeMany(new[] { text ?? string.Empty }, options, llmFindings);
+        return new AnonymizationResult { AnonymizedText = many.AnonymizedTexts[0], Mappings = many.Mappings };
+    }
 
-        var candidates = Collect(text, options, llmFindings);
-
-        // Vom Benutzer freigegebene Werte vor der Überlappungs-Auflösung entfernen,
-        // damit sie auch keine anderen Treffer verdrängen.
-        if (options.ErlaubteWerte.Count > 0)
-        {
-            var allowed = new HashSet<string>(
-                options.ErlaubteWerte.Where(w => !string.IsNullOrWhiteSpace(w)).Select(Normalize),
-                StringComparer.OrdinalIgnoreCase);
-            candidates.RemoveAll(c => allowed.Contains(Normalize(c.Original)));
-        }
-
-        var accepted = ResolveOverlaps(candidates);
-
-        // Platzhalter vergeben: gleicher Wert (pro Kategorie) → gleicher Platzhalter.
+    /// <summary>
+    /// Anonymisiert mehrere Texte mit einer gemeinsamen Zuordnungstabelle: derselbe
+    /// Originalwert erhält über alle Texte hinweg denselben Platzhalter. Das braucht
+    /// die API-Gateway-Variante, bei der eine Anfrage aus mehreren Feldern besteht
+    /// (System-Prompt, mehrere Nachrichten) und der KI-Server konsistente Platzhalter
+    /// sehen muss, um sie sinnvoll zu verarbeiten.
+    /// </summary>
+    public MultiAnonymizationResult AnonymizeMany(IReadOnlyList<string> texts, AnonymizerOptions options, IReadOnlyCollection<LlmEntity>? llmFindings = null)
+    {
+        // Platzhalter vergeben: gleicher Wert (pro Kategorie) → gleicher Platzhalter,
+        // über alle Texte der Anfrage hinweg.
         var placeholderByValue = new Dictionary<(PiiCategory, string), string>();
         var counters = new Dictionary<PiiCategory, int>();
         var mappings = new List<MappingEntry>();
         var labels = LabelsByLanguage[options.Language];
+        var outputs = new List<string>(texts.Count);
 
-        var sb = new StringBuilder(text.Length);
-        var pos = 0;
-        foreach (var c in accepted.OrderBy(c => c.Start))
+        var allowed = options.ErlaubteWerte.Count > 0
+            ? new HashSet<string>(
+                options.ErlaubteWerte.Where(w => !string.IsNullOrWhiteSpace(w)).Select(Normalize),
+                StringComparer.OrdinalIgnoreCase)
+            : null;
+
+        foreach (var text in texts)
         {
-            var key = (c.Category, Normalize(c.Original));
-            if (!placeholderByValue.TryGetValue(key, out var placeholder))
+            if (string.IsNullOrEmpty(text))
             {
-                var n = counters.GetValueOrDefault(c.Category) + 1;
-                counters[c.Category] = n;
-                placeholder = $"[{labels[c.Category]}_{n}]";
-                placeholderByValue[key] = placeholder;
-                mappings.Add(new MappingEntry(placeholder, c.Original, c.Category));
+                outputs.Add(text ?? string.Empty);
+                continue;
             }
 
-            sb.Append(text, pos, c.Start - pos);
-            sb.Append(placeholder);
-            pos = c.Start + c.Length;
-        }
-        sb.Append(text, pos, text.Length - pos);
+            var candidates = Collect(text, options, llmFindings);
 
-        return new AnonymizationResult { AnonymizedText = sb.ToString(), Mappings = mappings };
+            // Vom Benutzer freigegebene Werte vor der Überlappungs-Auflösung entfernen,
+            // damit sie auch keine anderen Treffer verdrängen.
+            if (allowed is not null)
+            {
+                candidates.RemoveAll(c => allowed.Contains(Normalize(c.Original)));
+            }
+
+            var accepted = ResolveOverlaps(candidates);
+
+            var sb = new StringBuilder(text.Length);
+            var pos = 0;
+            foreach (var c in accepted.OrderBy(c => c.Start))
+            {
+                var key = (c.Category, Normalize(c.Original));
+                if (!placeholderByValue.TryGetValue(key, out var placeholder))
+                {
+                    var n = counters.GetValueOrDefault(c.Category) + 1;
+                    counters[c.Category] = n;
+                    placeholder = $"[{labels[c.Category]}_{n}]";
+                    placeholderByValue[key] = placeholder;
+                    mappings.Add(new MappingEntry(placeholder, c.Original, c.Category));
+                }
+
+                sb.Append(text, pos, c.Start - pos);
+                sb.Append(placeholder);
+                pos = c.Start + c.Length;
+            }
+            sb.Append(text, pos, text.Length - pos);
+            outputs.Add(sb.ToString());
+        }
+
+        return new MultiAnonymizationResult { AnonymizedTexts = outputs, Mappings = mappings };
     }
 
     /// <summary>
@@ -327,6 +350,16 @@ public sealed class AnonymizerService
     /// Umformatierungen durch KI-Tools: [ name_1 ] oder [Name_1] werden auch erkannt.
     /// </summary>
     public string Deanonymize(string text, IEnumerable<MappingEntry> mappings)
+        => Deanonymize(text, mappings, transform: null);
+
+    /// <summary>
+    /// Wie <see cref="Deanonymize(string, IEnumerable{MappingEntry})"/>, aber der
+    /// Originalwert wird vor dem Einsetzen durch <paramref name="transform"/> geschickt.
+    /// Das braucht die API-Gateway-Variante, um Platzhalter innerhalb eines noch nicht
+    /// geparsten JSON-Fragments (Streaming) einzusetzen: dort muss der Originalwert
+    /// JSON-escaped werden, sonst zerbricht das Fragment an Anführungszeichen.
+    /// </summary>
+    public string Deanonymize(string text, IEnumerable<MappingEntry> mappings, Func<string, string>? transform)
     {
         if (string.IsNullOrEmpty(text))
         {
@@ -336,12 +369,13 @@ public sealed class AnonymizerService
         var result = text;
         foreach (var m in mappings)
         {
-            result = result.Replace(m.Placeholder, m.Original);
+            var replacement = transform is null ? m.Original : transform(m.Original);
+            result = result.Replace(m.Placeholder, replacement);
             // Zweiter Durchgang für Varianten; MatchEvaluator, damit $-Zeichen
             // im Originalwert nicht als Ersetzungsmuster interpretiert werden.
             var inner = m.Placeholder.Trim('[', ']');
             result = Regex.Replace(result, @"\[\s*" + Regex.Escape(inner) + @"\s*\]",
-                _ => m.Original, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                _ => replacement, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
         return result;
     }
