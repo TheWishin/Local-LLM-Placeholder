@@ -448,6 +448,18 @@ Check("JsonEscapeInner escaped Anführungszeichen", AnthropicRewriter.JsonEscape
 Check("ProxyOptions: Sprache 'de' → De", ProxyOptions.ParseLanguage("de") == AppLanguage.De);
 Check("ProxyOptions: Sprache leer → En", ProxyOptions.ParseLanguage(null) == AppLanguage.En);
 
+// Audit-Zusammenfassung: nur Zahlen je Kategorie, keine Originalwerte.
+var auditText = AuditSummary.Summarize(new List<MappingEntry>
+{
+    new("[NAME_1]", "Max Muster", PiiCategory.Name),
+    new("[EMAIL_1]", "max@example.ch", PiiCategory.Email),
+    new("[IBAN_1]", "CH93 0076 2011 6238 5295 7", PiiCategory.Iban)
+});
+Check("Audit: Gesamtzahl korrekt", auditText.StartsWith("3 Platzhalter"));
+Check("Audit: Kategorien gezählt", auditText.Contains("name×1") && auditText.Contains("email×1") && auditText.Contains("iban×1"));
+Check("Audit: keine Originalwerte im Protokoll", !auditText.Contains("Max Muster") && !auditText.Contains("max@example.ch") && !auditText.Contains("CH93"));
+Check("Audit: ohne PII neutral", AuditSummary.Summarize(new List<MappingEntry>()) == "keine PII");
+
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? "ALLE TESTS BESTANDEN" : $"{failures} TEST(S) FEHLGESCHLAGEN");
 Environment.Exit(failures == 0 ? 0 : 1);

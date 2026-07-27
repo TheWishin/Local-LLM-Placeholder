@@ -25,6 +25,14 @@ detection logic and are versioned together.
   einmaliger Berechtigungsabfrage für den Server), in der Desktop-App und im
   Gateway über die Umgebungsvariablen `OLLAMA_HOST` / `OLLAMA_BASE_URL` /
   `OLLAMA_MODEL`. So kann die IT ein zentrales Ollama auf einem Server betreiben.
+- **Docker/Compose für das Gateway.** `Dockerfile` und `docker-compose.yml` für
+  den zentralen Betrieb auf einem haus-internen Server (`docker compose up -d`),
+  inkl. optionalem Ollama-Service.
+- **Datenschutzfreundliches Protokoll (opt-in, `ANONYMIZER_AUDIT=true`).** Das
+  Gateway protokolliert pro Anfrage nur die Anzahl ersetzter Werte je Kategorie
+  (z.B. „3 Platzhalter (name×1, email×1, iban×1)") – nie die Originalwerte. Das
+  belegt die Wirksamkeit für die revDSG-Rechenschaftspflicht, ohne selbst neue
+  Personendaten zu erzeugen.
 
 ### Notes
 - Die offizielle Claude-Desktop/Web-App (claude.ai) lässt sich technisch nicht auf

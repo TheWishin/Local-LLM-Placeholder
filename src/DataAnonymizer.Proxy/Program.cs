@@ -18,6 +18,10 @@ if (bool.TryParse(Environment.GetEnvironmentVariable("ANONYMIZER_USE_LLM"), out 
 {
     proxyOptions.UseLlm = useLlmEnv;
 }
+if (bool.TryParse(Environment.GetEnvironmentVariable("ANONYMIZER_AUDIT"), out var auditEnv))
+{
+    proxyOptions.Audit = auditEnv;
+}
 proxyOptions.Upstream = proxyOptions.Upstream.TrimEnd('/');
 
 // Lokales/haus-internes LLM (Ollama). Endpoint auch per OLLAMA_HOST/OLLAMA_BASE_URL.

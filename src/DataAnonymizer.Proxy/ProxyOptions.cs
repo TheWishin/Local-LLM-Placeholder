@@ -18,6 +18,13 @@ public sealed class ProxyOptions
     /// </summary>
     public bool UseLlm { get; set; } = false;
 
+    /// <summary>
+    /// Datenschutzfreundliches Protokoll: pro Anfrage wird nur die Anzahl ersetzter
+    /// Werte je Kategorie geloggt (revDSG-Rechenschaftspflicht), nie die Werte selbst.
+    /// Standardmässig aus.
+    /// </summary>
+    public bool Audit { get; set; } = false;
+
     /// <summary>Welche Kantone/Länder-übergreifende Kategorie-Schalter aktiv sind (alle an per Default).</summary>
     public AnonymizerOptions BuildAnonymizerOptions()
     {

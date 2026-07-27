@@ -60,6 +60,12 @@ public sealed class AnthropicForwarder
         var rewrite = AnthropicRewriter.AnonymizeRequestBody(requestBody, _service, anonymizerOptions, llmFindings);
         var mappings = rewrite.Mappings;
 
+        if (_options.Audit)
+        {
+            // Nur Zahlen je Kategorie – nie die Originalwerte.
+            _logger.LogInformation("Anfrage anonymisiert: {Summary}", AuditSummary.Summarize(mappings));
+        }
+
         var client = _httpFactory.CreateClient("upstream");
         using var upstreamRequest = new HttpRequestMessage(HttpMethod.Post, _options.Upstream + "/v1/messages" + context.Request.QueryString);
         CopyRequestHeaders(context, upstreamRequest);

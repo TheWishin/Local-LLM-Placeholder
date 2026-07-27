@@ -268,6 +268,19 @@ Ready-to-run, self-starting packages ship per platform
 Works with the Anthropic SDK, Claude Code and any tool with a configurable base
 URL.
 
+**Central deployment for the company (Docker):** IT can run one gateway for the
+whole team instead of a package per laptop:
+
+```bash
+docker compose up -d --build   # gateway on :8080, restarts automatically
+```
+
+Then everyone points `ANTHROPIC_BASE_URL` at `http://<server>:8080`. Set
+`ANONYMIZER_AUDIT=true` for a privacy-safe log that records only *how many*
+values were replaced per category per request (e.g. `3 placeholders
+(name×1, email×1, iban×1)`) – never the values themselves, which helps document
+effectiveness for the revDSG accountability duty.
+
 > **Note:** the official Claude desktop/web app (claude.ai) cannot be redirected
 > to a custom server – that's a limitation of the app, not of the gateway. The
 > gateway is for API-based usage; for the normal app, use the browser extension

@@ -1,0 +1,38 @@
+# Zentraler Betrieb des Anonymisierungs-Gateways für die haus-interne IT.
+#
+#   docker compose up -d --build
+#
+# Danach zeigen die Clients mit ANTHROPIC_BASE_URL=http://<server>:8080 auf das
+# Gateway. Vertrauliche Daten werden anonymisiert, bevor sie den Server verlassen.
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: src/DataAnonymizer.Proxy/Dockerfile
+    image: dataanonymizer-gateway:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ANONYMIZER_UPSTREAM: "https://api.anthropic.com"
+      ANONYMIZER_LANGUAGE: "En"      # En / De / Fr / It
+      ANONYMIZER_USE_LLM: "false"    # "true" = haus-internes Ollama zusätzlich nutzen
+      ANONYMIZER_AUDIT: "false"      # "true" = datenschutzfreundliches Protokoll (nur Zahlen)
+      # Haus-internes Ollama (falls ANONYMIZER_USE_LLM=true):
+      # OLLAMA_HOST: "http://ollama:11434"
+      # OLLAMA_MODEL: "llama3.2"
+    restart: unless-stopped
+
+  # Optionales haus-internes Ollama gleich mitliefern. Auskommentiert lassen,
+  # wenn bereits ein Ollama-Server existiert (dann oben OLLAMA_HOST setzen).
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   restart: unless-stopped
+
+# volumes:
+#   ollama-models:

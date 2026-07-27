@@ -27,7 +27,8 @@ internal static class InfoPage
              weitergeleitet und die Antwort wird wieder zurückübersetzt.</p>
           <p>Ziel-Server (Upstream): <code>{{options.Upstream}}</code><br>
              Platzhalter-Sprache: <code>{{options.Language}}</code> ·
-             Lokales LLM zusätzlich: <code>{{(options.UseLlm ? "an" : "aus")}}</code></p>
+             Lokales LLM zusätzlich: <code>{{(options.UseLlm ? "an" : "aus")}}</code> ·
+             Protokoll: <code>{{(options.Audit ? "an" : "aus")}}</code></p>
 
           <h2>So benutzen</h2>
           <p>Richte deinen Anthropic-Client auf dieses Gateway statt auf <code>api.anthropic.com</code>:</p>
