@@ -9,6 +9,15 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-07-27
+
+### Changed
+- **Releases getrennt.** Die Desktop-App und die Browser-Erweiterung bilden wieder
+  ein eigenes, schlankes Release (Tag `v*`) – wie gewohnt. Das **API-Gateway** hat
+  ab sofort ein **eigenes, separates Release** (Workflow `release-gateway.yml`,
+  Tag `gateway-v*`), weil es ein optionaler Baustein nur für die API-Nutzung ist.
+  An App und Erweiterung selbst ändert sich nichts.
+
 ## [1.7.0] - 2026-07-27
 
 ### Added
@@ -147,7 +156,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.1
 [1.7.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.0
 [1.6.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.6.0
 [1.5.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.5.1
