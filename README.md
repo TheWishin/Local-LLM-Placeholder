@@ -263,8 +263,14 @@ export ANTHROPIC_API_KEY="sk-ant-..."   # your real key, only forwarded
 - Config via environment variables: `ANONYMIZER_UPSTREAM`, `ANONYMIZER_LANGUAGE`
   (`En`/`De`/`Fr`/`It`), `ANONYMIZER_USE_LLM`, `OLLAMA_HOST`, `OLLAMA_MODEL`.
 
-The gateway is an **optional add-on for API usage** and therefore has its **own
-separate release** (tagged `gateway-v*`), apart from the app + extension release.
+The gateway is an **optional add-on for API usage**, so downloads come in **two
+variants**:
+
+- **without gateway** (tag `v*`) — just the desktop app + browser extension, the
+  everyday tools.
+- **with gateway** (tag `gateway-v*`) — a complete bundle that additionally
+  contains the gateway (app + extension + gateway together).
+
 Ready-to-run, self-starting packages ship per platform
 (`DataAnonymizer-Gateway-<version>-<os>.zip`) – unzip and run the start script.
 Works with the Anthropic SDK, Claude Code and any tool with a configurable base
