@@ -68,23 +68,10 @@ jobs:
             (cd publish && zip -qr "../DataAnonymizer-${RELEASE_VERSION}-$rid.zip" "$rid")
           done
 
-      - name: API-Gateway paketieren (alle Plattformen)
-        run: |
-          for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
-            dotnet publish src/DataAnonymizer.Proxy -c Release -r "$rid" --self-contained -o "gateway/$rid"
-            cp installers/GATEWAY-README.txt "gateway/$rid/README.txt"
-            case "$rid" in
-              win-x64)
-                cp installers/Start-Gateway-Windows.bat "gateway/$rid/" ;;
-              osx-x64|osx-arm64)
-                cp installers/start-gateway-macOS.command "gateway/$rid/"
-                chmod +x "gateway/$rid/start-gateway-macOS.command" ;;
-              linux-x64)
-                cp installers/start-gateway-Linux.sh "gateway/$rid/"
-                chmod +x "gateway/$rid/start-gateway-Linux.sh" ;;
-            esac
-            (cd gateway && zip -qr "../DataAnonymizer-Gateway-${RELEASE_VERSION}-$rid.zip" "$rid")
-          done
+      # Hinweis: Das API-Gateway wird bewusst NICHT hier mitgeliefert. Es hat ein
+      # eigenes, separates Release (Workflow release-gateway.yml, Tag gateway-v*),
+      # damit dieses Release schlank bleibt und nur die beiden Alltags-Werkzeuge
+      # enthält: die Desktop-App und die Browser-Erweiterung.
 
       - name: Browser-Erweiterung paketieren (Chrome/Edge, inkl. OCR-Dateien)
         run: |
