@@ -9,6 +9,17 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-07-27
+
+### Changed
+- **Zwei Release-Varianten zur Auswahl:**
+  - **ohne Gateway** (Tag `v1.7.2`): nur Desktop-App + Browser-Erweiterung – die
+    Alltags-Werkzeuge, schlank.
+  - **mit Gateway** (Tag `gateway-v1.7.2`): ein Komplettpaket, das zusätzlich das
+    API-Gateway enthält (App + Erweiterung + Gateway zusammen).
+  Beide Releases sind klar mit „ohne Gateway"/„mit Gateway" benannt; die
+  Gateway-Dateinamen sind bereinigt (`DataAnonymizer-Gateway-v1.7.2-<os>.zip`).
+
 ## [1.7.1] - 2026-07-27
 
 ### Changed
@@ -156,7 +167,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.7.1...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.7.2...HEAD
+[1.7.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.2
 [1.7.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.1
 [1.7.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.0
 [1.6.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.6.0

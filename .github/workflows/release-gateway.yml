@@ -1,19 +1,17 @@
-name: Release Gateway
+name: Release (mit Gateway)
 
-# Eigenes, separates Release NUR für das API-Gateway (DataAnonymizer.Proxy).
-# Die Desktop-App und die Browser-Erweiterung haben ihr eigenes Release
-# (Workflow release.yml, Tag v*). So bleibt der Alltags-Download schlank und
-# das Gateway ist ein klar getrennter, optionaler Baustein für API-Nutzung.
+# Komplettpaket MIT Gateway: Desktop-App + Browser-Erweiterung + API-Gateway
+# in EINEM Release. Wer das Gateway nicht braucht, nimmt das schlanke Release
+# OHNE Gateway (Workflow release.yml, Tag v*).
 #
-# Auslösen: Tag wie gateway-v1.7.1 pushen ODER manuell über "Run workflow"
-# (der Tag wird dann automatisch erstellt).
+# Auslösen: Tag wie gateway-v1.7.2 pushen ODER manuell über "Run workflow".
 on:
   push:
     tags: ['gateway-v*']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Gateway-Version, z.B. gateway-v1.7.1'
+        description: 'Version mit Gateway, z.B. gateway-v1.7.2'
         required: true
 
 permissions:
@@ -24,7 +22,7 @@ env:
   RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
 
 jobs:
-  release-gateway:
+  release-with-gateway:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,10 +31,46 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Test (inkl. Gateway-Logik)
+      - name: Test
         run: dotnet run --project tests/DataAnonymizer.Tests -c Release
 
-      - name: Gateway paketieren (alle Plattformen)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test browser extension engine
+        run: |
+          node extension/engine.test.mjs
+          node extension/image.test.mjs
+
+      - name: OCR-Bausteine für die Bild-Anonymisierung holen
+        run: bash scripts/fetch-ocr-assets.sh
+
+      # Für die Dateinamen das "gateway-" Präfix entfernen: gateway-v1.7.2 -> v1.7.2
+      - name: Saubere Versionsbezeichnung für Dateinamen
+        run: echo "V=${RELEASE_VERSION#gateway-}" >> "$GITHUB_ENV"
+
+      - name: App publizieren (alle Plattformen)
+        run: |
+          for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
+            dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
+            case "$rid" in
+              win-x64)
+                cp installers/Install-Windows.bat "publish/$rid/"
+                cp installers/START-HERE-Windows.txt "publish/$rid/START HERE.txt" ;;
+              osx-x64|osx-arm64)
+                cp installers/Install-macOS.command "publish/$rid/"
+                chmod +x "publish/$rid/Install-macOS.command"
+                cp installers/START-HERE-macOS.txt "publish/$rid/START HERE.txt" ;;
+              linux-x64)
+                cp installers/Install-Linux.sh "publish/$rid/"
+                chmod +x "publish/$rid/Install-Linux.sh"
+                cp installers/START-HERE-Linux.txt "publish/$rid/START HERE.txt" ;;
+            esac
+            (cd publish && zip -qr "../DataAnonymizer-${V}-$rid.zip" "$rid")
+          done
+
+      - name: Gateway publizieren (alle Plattformen)
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
             dotnet publish src/DataAnonymizer.Proxy -c Release -r "$rid" --self-contained -o "gateway/$rid"
@@ -51,27 +85,27 @@ jobs:
                 cp installers/start-gateway-Linux.sh "gateway/$rid/"
                 chmod +x "gateway/$rid/start-gateway-Linux.sh" ;;
             esac
-            (cd gateway && zip -qr "../DataAnonymizer-Gateway-${RELEASE_VERSION}-$rid.zip" "$rid")
+            (cd gateway && zip -qr "../DataAnonymizer-Gateway-${V}-$rid.zip" "$rid")
           done
 
-      - name: GitHub-Release (Gateway) erstellen
+      - name: Browser-Erweiterung paketieren (Chrome/Edge, inkl. OCR-Dateien)
+        run: |
+          zip -qr "DataAnonymizer-${V}-browser-extension.zip" extension \
+            -x "extension/engine.test.mjs" "extension/image.test.mjs"
+
+      - name: GitHub-Release (mit Gateway) erstellen
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version || github.ref_name }}
           target_commitish: ${{ github.sha }}
-          name: ${{ inputs.version || github.ref_name }}
+          name: ${{ inputs.version || github.ref_name }} — mit Gateway (App + Erweiterung + Gateway)
           body: |
-            **Daten-Anonymisierer – API-Gateway** (separates Release).
+            **Komplettpaket MIT Gateway.** Enthält alles: die Desktop-App, die
+            Browser-Erweiterung **und** das API-Gateway.
 
-            Ein lokaler, Anthropic-kompatibler Reverse-Proxy: der Client zeigt mit
-            `ANTHROPIC_BASE_URL` auf das Gateway, vertrauliche Daten werden
-            anonymisiert an den KI-Server geschickt und in der Antwort wieder
-            eingesetzt (auch Streaming und SQL/Tool-Ausgaben).
+            Wer das Gateway nicht braucht, nimmt das schlanke Release **ohne
+            Gateway** (Tag `v…`) – dort sind nur App und Erweiterung enthalten.
 
-            Passendes Paket für dein System herunterladen, entpacken und das
-            Start-Skript ausführen. Details siehe `README.txt` im Paket.
-
-            > Hinweis: Die offizielle Claude-Desktop/Web-App lässt sich technisch
-            > nicht auf einen eigenen Server umleiten. Für die normale Nutzung sind
-            > die **App** und die **Browser-Erweiterung** gedacht (eigenes Release).
-          files: DataAnonymizer-Gateway-*.zip
+            Passendes Paket herunterladen, entpacken, Start-Skript ausführen.
+            Das Gateway ist nur für die API-Nutzung nötig (nicht für die App/Erweiterung).
+          files: DataAnonymizer-*.zip

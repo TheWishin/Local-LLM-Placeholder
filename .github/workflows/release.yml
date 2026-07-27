@@ -83,5 +83,12 @@ jobs:
         with:
           tag_name: ${{ inputs.version || github.ref_name }}
           target_commitish: ${{ github.sha }}
+          name: ${{ inputs.version || github.ref_name }} — ohne Gateway (App + Erweiterung)
+          body: |
+            Schlankes Release **OHNE Gateway**: nur die Desktop-App und die
+            Browser-Erweiterung – die beiden Alltags-Werkzeuge.
+
+            Wer zusätzlich das API-Gateway möchte, nimmt das Komplettpaket **mit
+            Gateway** (Tag `gateway-v…`).
           files: DataAnonymizer-*.zip
           generate_release_notes: true
