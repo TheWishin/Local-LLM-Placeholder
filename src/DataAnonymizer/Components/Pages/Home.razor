@@ -1,30 +1,83 @@
 @page "/"
 @rendermode InteractiveServer
+@using System.Text.Json
 @using DataAnonymizer.Services
 @inject AnonymizerService Anonymizer
+@inject LocalLlmClient Llm
+@inject LocalizationService Loc
 @inject IJSRuntime JS
 
-<PageTitle>Daten-Anonymisierer</PageTitle>
+<PageTitle>@Loc.T.PageTitle</PageTitle>
 
-<h1 class="mb-1">🔒 Daten-Anonymisierer</h1>
-<p class="text-muted mb-4">
-    Ersetzt persönliche Daten (Namen, E-Mails, Telefonnummern, IBAN, AHV-Nr., Adressen, …) durch Platzhalter,
-    bevor du einen Fall in Claude Code oder ein anderes KI-Tool einfügst.
-    <strong>Alles läuft lokal</strong> – es werden keine Daten übertragen oder gespeichert.
-</p>
+<div class="app-hero">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="mb-1">@Loc.T.AppTitle</h1>
+            <p class="hero-tagline mb-0">@Loc.T.Tagline</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span aria-hidden="true">🌐</span>
+            <select class="form-select form-select-sm w-auto" aria-label="Language"
+                    @bind="_langCode" @bind:after="LanguageChangedAsync">
+                @foreach (var lang in LocalizationService.All)
+                {
+                    <option value="@lang.Code">@lang.NativeName</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="privacy-badge mt-3">@Loc.T.PrivacyBadge</div>
+</div>
+
+<div class="how-strip">
+    <div class="how-step">
+        <div class="how-num">1</div>
+        <div>
+            <div class="how-step-title">@Loc.T.Step1Title</div>
+            <div class="how-step-desc">@Loc.T.Step1Desc</div>
+        </div>
+    </div>
+    <div class="how-arrow" aria-hidden="true">→</div>
+    <div class="how-step">
+        <div class="how-num">2</div>
+        <div>
+            <div class="how-step-title">@Loc.T.Step2Title</div>
+            <div class="how-step-desc">@Loc.T.Step2Desc</div>
+        </div>
+    </div>
+    <div class="how-arrow" aria-hidden="true">→</div>
+    <div class="how-step">
+        <div class="how-num">3</div>
+        <div>
+            <div class="how-step-title">@Loc.T.Step3Title</div>
+            <div class="how-step-desc">@Loc.T.Step3Desc</div>
+        </div>
+    </div>
+</div>
 
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="card shadow-sm">
-            <div class="card-header fw-bold">1️⃣ Originaltext mit persönlichen Daten</div>
+            <div class="card-header fw-bold">@Loc.T.CardOriginal</div>
             <div class="card-body">
                 <textarea class="form-control font-monospace" rows="10"
-                          placeholder="Falltext hier einfügen, z.B.:&#10;Herr Max Muster (geb. 12.03.1985), Bahnhofstrasse 12, 8001 Zürich, Tel. +41 79 123 45 67, max.muster@example.ch, meldet einen Schaden. Policen-Nr. P-2023/4711, IBAN CH93 0076 2011 6238 5295 7."
+                          placeholder="@Loc.T.InputPlaceholder"
                           @bind="_inputText"></textarea>
-                <div class="d-flex gap-2 mt-3">
-                    <button class="btn btn-primary" @onclick="RunAnonymize">🔒 Anonymisieren</button>
-                    <button class="btn btn-outline-secondary" @onclick="ClearAll">Leeren</button>
+                <div class="d-flex gap-2 mt-3 align-items-center flex-wrap">
+                    <button class="btn btn-primary" disabled="@_busy" @onclick="RunAnonymizeAsync">
+                        @(_busy ? Loc.T.BtnAnonymizeBusy : Loc.T.BtnAnonymize)
+                    </button>
+                    <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="PasteInputAsync">@Loc.T.BtnPaste</button>
+                    <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="ClearAll">@Loc.T.BtnClear</button>
                 </div>
+                @if (_busy && _llmEnabled && _llmStatus == LlmStatus.Ready)
+                {
+                    <p class="text-muted small mt-2 mb-0">@Loc.T.LlmAnalyzing</p>
+                }
+                @if (_llmFailed)
+                {
+                    <div class="alert alert-warning py-2 small mt-3 mb-0">@Loc.T.LlmError</div>
+                }
             </div>
         </div>
 
@@ -32,24 +85,41 @@
         {
             <div class="card shadow-sm mt-4">
                 <div class="card-header fw-bold d-flex justify-content-between align-items-center">
-                    <span>2️⃣ Anonymisierter Text – sicher für Claude Code</span>
+                    <span>@Loc.T.CardAnonymized</span>
                     <button class="btn btn-sm btn-success" @onclick='() => CopyToClipboard(_result.AnonymizedText, "output")'>
-                        @(_copied == "output" ? "✔ Kopiert" : "📋 Kopieren")
+                        @(_copied == "output" ? Loc.T.Copied : Loc.T.BtnCopy)
                     </button>
                 </div>
                 <div class="card-body">
+                    @if (SensitiveCount > 0)
+                    {
+                        <div class="alert alert-danger py-2 mb-3">@string.Format(Loc.T.SensitiveWarning, SensitiveCount)</div>
+                    }
                     <textarea class="form-control font-monospace bg-light" rows="10" readonly>@_result.AnonymizedText</textarea>
 
                     @if (_result.Mappings.Count > 0)
                     {
-                        <h6 class="mt-4">Zuordnungstabelle (@_result.Mappings.Count Werte ersetzt)</h6>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-4 mb-2">
+                            <h6 class="mb-0">@string.Format(Loc.T.MappingTitle, _result.Mappings.Count)</h6>
+                            <span class="text-muted small">·
+                                @string.Format(Loc.T.SummaryLine, _result.Mappings.Count, CategoryCounts.Count)</span>
+                        </div>
+                        <div class="mb-2">
+                            @foreach (var (cat, count) in CategoryCounts)
+                            {
+                                <span class="cat-badge cat-@PiiCategoryIds.ToId(cat) me-1 mb-1">
+                                    @AnonymizerService.LabelFor(cat, Loc.Language) · @count
+                                </span>
+                            }
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm table-striped align-middle">
                                 <thead>
                                     <tr>
-                                        <th>Platzhalter</th>
-                                        <th>Originalwert</th>
-                                        <th>Kategorie</th>
+                                        <th>@Loc.T.ThPlaceholder</th>
+                                        <th>@Loc.T.ThOriginal</th>
+                                        <th>@Loc.T.ThCategory</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -58,40 +128,68 @@
                                         <tr>
                                             <td><code>@m.Placeholder</code></td>
                                             <td>@m.Original</td>
-                                            <td><span class="badge text-bg-secondary">@AnonymizerService.LabelFor(m.Category)</span></td>
+                                            <td><span class="cat-badge cat-@PiiCategoryIds.ToId(m.Category)">@AnonymizerService.LabelFor(m.Category, Loc.Language)</span></td>
+                                            <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="@Loc.T.AllowTooltip"
+                                                        @onclick="() => AllowValueAsync(m.Original)">👁</button>
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
-                        <p class="text-muted small mb-0">
-                            Die Tabelle bleibt nur in dieser Browser-Sitzung im Speicher und wird nirgends abgelegt.
-                        </p>
+                        <p class="text-muted small mb-0">@Loc.T.MappingNote</p>
                     }
                     else
                     {
-                        <p class="text-muted mt-3 mb-0">Keine persönlichen Daten gefunden.</p>
+                        <p class="text-muted mt-3 mb-0">@Loc.T.NoPiiFound</p>
+                    }
+
+                    @if (AllowedTerms.Count > 0)
+                    {
+                        <div class="mt-3">
+                            <span class="text-muted small">@Loc.T.AllowedChipsTitle</span>
+                            @foreach (var term in AllowedTerms)
+                            {
+                                <button class="btn btn-sm btn-outline-success py-0 px-2 ms-1 mb-1" title="@Loc.T.AllowedChipRemoveTooltip"
+                                        @onclick="() => RemoveAllowedAsync(term)">@term ✕</button>
+                            }
+                        </div>
                     }
                 </div>
             </div>
+        }
 
+        @if (_result is not null || _activeMappings.Count > 0)
+        {
             <div class="card shadow-sm mt-4">
-                <div class="card-header fw-bold">3️⃣ Antwort de-anonymisieren (Platzhalter zurückersetzen)</div>
+                <div class="card-header fw-bold">@Loc.T.CardDeanonymize</div>
                 <div class="card-body">
-                    <p class="text-muted small">
-                        Antwort von Claude Code hier einfügen – die Platzhalter werden wieder durch die Originalwerte ersetzt.
-                    </p>
+                    @if (_result is null && _activeMappings.Count > 0)
+                    {
+                        <div class="alert alert-info py-2 small">@string.Format(Loc.T.MappingLoadedNote, _activeMappings.Count)</div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small">@Loc.T.DeanonHint</p>
+                    }
                     <textarea class="form-control font-monospace" rows="8"
-                              placeholder="Antwort mit Platzhaltern wie [NAME_1] hier einfügen …"
+                              placeholder="@Loc.T.ResponsePlaceholder"
                               @bind="_responseText"></textarea>
-                    <button class="btn btn-primary mt-3" @onclick="RunDeanonymize">🔓 Platzhalter zurückersetzen</button>
+                    <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+                        <button class="btn btn-primary" @onclick="RunDeanonymize">@Loc.T.BtnDeanonymize</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportMappingsAsync">@Loc.T.BtnExportMapping</button>
+                        <label class="btn btn-sm btn-outline-secondary mb-0" for="mappingImport">@Loc.T.BtnImportMapping</label>
+                        <InputFile id="mappingImport" OnChange="ImportMappingsAsync" accept=".json" style="display:none" />
+                        <button class="btn btn-sm btn-outline-danger" @onclick="DeleteMappingsAsync">@Loc.T.BtnDeleteMapping</button>
+                    </div>
 
                     @if (_deanonymized is not null)
                     {
                         <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
-                            <h6 class="mb-0">Wiederhergestellter Text</h6>
+                            <h6 class="mb-0">@Loc.T.RestoredTitle</h6>
                             <button class="btn btn-sm btn-success" @onclick='() => CopyToClipboard(_deanonymized, "restored")'>
-                                @(_copied == "restored" ? "✔ Kopiert" : "📋 Kopieren")
+                                @(_copied == "restored" ? Loc.T.Copied : Loc.T.BtnCopy)
                             </button>
                         </div>
                         <textarea class="form-control font-monospace bg-light" rows="8" readonly>@_deanonymized</textarea>
@@ -103,77 +201,472 @@
 
     <div class="col-lg-4">
         <div class="card shadow-sm">
-            <div class="card-header fw-bold">⚙️ Erkennungsregeln</div>
+            <div class="card-header fw-bold">@Loc.T.CardLlm</div>
             <div class="card-body">
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optNamen" @bind="_options.Namen" /><label class="form-check-label" for="optNamen">Namen (nach Herr/Frau, „Name:“, …)</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optEmails" @bind="_options.Emails" /><label class="form-check-label" for="optEmails">E-Mail-Adressen</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optTel" @bind="_options.Telefonnummern" /><label class="form-check-label" for="optTel">Telefonnummern</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optAdr" @bind="_options.Adressen" /><label class="form-check-label" for="optAdr">Strassen &amp; Hausnummern</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optOrt" @bind="_options.Orte" /><label class="form-check-label" for="optOrt">PLZ &amp; Ortschaften</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optIban" @bind="_options.Iban" /><label class="form-check-label" for="optIban">IBAN</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optAhv" @bind="_options.Ahv" /><label class="form-check-label" for="optAhv">AHV-Nummern (756.…)</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optKarte" @bind="_options.Kreditkarten" /><label class="form-check-label" for="optKarte">Kreditkartennummern</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optRef" @bind="_options.Referenzen" /><label class="form-check-label" for="optRef">Kunden-/Policen-/Fall-Nummern</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optKz" @bind="_options.Kennzeichen" /><label class="form-check-label" for="optKz">Autokennzeichen (CH)</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optGeb" @bind="_options.Geburtsdaten" /><label class="form-check-label" for="optGeb">Geburtsdaten („geb.“, „geboren am“)</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="optDaten" @bind="_options.AlleDaten" /><label class="form-check-label" for="optDaten">Alle Datumsangaben</label></div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="optLlm"
+                           checked="@_llmEnabled" @onchange="LlmToggledAsync" />
+                    <label class="form-check-label" for="optLlm">@Loc.T.LlmEnable</label>
+                </div>
+                <p class="text-muted small mt-2 mb-2">@Loc.T.LlmHint</p>
+
+                @if (_llmEnabled)
+                {
+                    @switch (_llmStatus)
+                    {
+                        case LlmStatus.Checking:
+                            <p class="small mb-0">⏳ @Loc.T.LlmStatusChecking</p>
+                            break;
+                        case LlmStatus.Ready:
+                            <p class="small text-success mb-2">@Loc.T.LlmStatusReady</p>
+                            <label class="form-label small mb-1" for="llmModel">@Loc.T.LlmModelLabel</label>
+                            <select id="llmModel" class="form-select form-select-sm"
+                                    @bind="_llmModel" @bind:after="SaveLlmModelAsync">
+                                @foreach (var model in _llmModels)
+                                {
+                                    <option value="@model">@model</option>
+                                }
+                            </select>
+                            break;
+                        case LlmStatus.Pulling:
+                            <p class="small mb-2">@string.Format(Loc.T.LlmStatusPulling, Llm.DefaultModel, _pullPercent)</p>
+                            <div class="progress" role="progressbar" aria-valuenow="@_pullPercent" aria-valuemin="0" aria-valuemax="100" style="height: 6px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: @(_pullPercent)%"></div>
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">@Loc.T.LlmPullNote</p>
+                            break;
+                        case LlmStatus.PullFailed:
+                            <p class="small text-danger mb-2">@string.Format(Loc.T.LlmPullFailed, Llm.DefaultModel)</p>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="CheckLlmAsync">@Loc.T.BtnRecheck</button>
+                            break;
+                        case LlmStatus.Offline:
+                            <p class="small text-warning-emphasis mb-1">@Loc.T.LlmStatusOffline</p>
+                            <p class="text-muted small mb-2">@Loc.T.LlmOfflineHelp</p>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="CheckLlmAsync">@Loc.T.BtnRecheck</button>
+                            break;
+                    }
+                }
             </div>
         </div>
 
-        <div class="card shadow-sm mt-4">
-            <div class="card-header fw-bold">📝 Eigene Begriffe</div>
-            <div class="card-body">
-                <p class="text-muted small">
-                    Ein Begriff pro Zeile (z.B. Firmennamen, Projektnamen oder Namen ohne Anrede).
-                    Diese werden immer ersetzt und lokal im Browser gespeichert.
-                </p>
-                <textarea class="form-control font-monospace" rows="6"
-                          placeholder="Muster AG&#10;Anna Beispiel&#10;Projekt Phoenix"
+        <details class="card shadow-sm mt-4 advanced-panel">
+            <summary class="card-header fw-bold">
+                @Loc.T.AdvancedTitle
+            </summary>
+            <div class="card-body pb-2">
+                <p class="text-muted small mb-0">@Loc.T.AdvancedHint</p>
+            </div>
+
+        <div class="card border-0 shadow-none">
+            <div class="card-header bg-transparent fw-semibold">@Loc.T.CardRules</div>
+            <div class="card-body pt-2">
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optNamen" @bind="_options.Namen" /><label class="form-check-label" for="optNamen">@Loc.T.OptNames</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optEmails" @bind="_options.Emails" /><label class="form-check-label" for="optEmails">@Loc.T.OptEmails</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optTel" @bind="_options.Telefonnummern" /><label class="form-check-label" for="optTel">@Loc.T.OptPhones</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optAdr" @bind="_options.Adressen" /><label class="form-check-label" for="optAdr">@Loc.T.OptStreets</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optOrt" @bind="_options.Orte" /><label class="form-check-label" for="optOrt">@Loc.T.OptCities</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optIban" @bind="_options.Iban" /><label class="form-check-label" for="optIban">@Loc.T.OptIban</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optAhv" @bind="_options.Ahv" /><label class="form-check-label" for="optAhv">@Loc.T.OptSsn</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optKarte" @bind="_options.Kreditkarten" /><label class="form-check-label" for="optKarte">@Loc.T.OptCards</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optRef" @bind="_options.Referenzen" /><label class="form-check-label" for="optRef">@Loc.T.OptRefs</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optKz" @bind="_options.Kennzeichen" /><label class="form-check-label" for="optKz">@Loc.T.OptPlates</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optOrg" @bind="_options.Organisationen" /><label class="form-check-label" for="optOrg">@Loc.T.OptOrgs</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optIp" @bind="_options.IpAdressen" /><label class="form-check-label" for="optIp">@Loc.T.OptIp</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optSens" @bind="_options.SensitiveDaten" /><label class="form-check-label" for="optSens">@Loc.T.OptSensitive</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optGeb" @bind="_options.Geburtsdaten" /><label class="form-check-label" for="optGeb">@Loc.T.OptBirthdays</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="optDaten" @bind="_options.AlleDaten" /><label class="form-check-label" for="optDaten">@Loc.T.OptAllDates</label></div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-none">
+            <div class="card-header bg-transparent fw-semibold">@Loc.T.CardTerms</div>
+            <div class="card-body pt-2">
+                <p class="text-muted small">@Loc.T.TermsHint</p>
+                <textarea class="form-control font-monospace" rows="4"
+                          placeholder="@Loc.T.TermsPlaceholder"
                           @bind="_customTermsText" @bind:after="SaveCustomTerms"></textarea>
             </div>
         </div>
+
+        <div class="card border-0 shadow-none">
+            <div class="card-header bg-transparent fw-semibold">@Loc.T.CardAllowed</div>
+            <div class="card-body pt-2">
+                <p class="text-muted small">@Loc.T.AllowedHint</p>
+                <textarea class="form-control font-monospace" rows="3"
+                          @bind="_allowedTermsText" @bind:after="SaveAllowedTerms"></textarea>
+            </div>
+        </div>
+        </details>
     </div>
 </div>
 
+<footer class="dsg-note">🇨🇭 @Loc.T.DsgNote</footer>
+
 @code {
+    private enum LlmStatus { Checking, Ready, Offline, Pulling, PullFailed }
+
     private string _inputText = string.Empty;
     private string _responseText = string.Empty;
     private string _customTermsText = string.Empty;
+    private string _allowedTermsText = string.Empty;
+    private IReadOnlyList<LlmEntity>? _lastLlmFindings;
+    private List<MappingEntry> _activeMappings = new();
     private string? _deanonymized;
     private string? _copied;
+    private bool _busy;
     private AnonymizationResult? _result;
     private readonly AnonymizerOptions _options = new();
+
+    private string _langCode = "de";
+
+    private bool _llmEnabled;
+    private bool _llmFailed;
+    private LlmStatus _llmStatus = LlmStatus.Checking;
+    private IReadOnlyList<string> _llmModels = Array.Empty<string>();
+    private string _llmModel = string.Empty;
+    private int _pullPercent;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            var saved = await JS.InvokeAsync<string?>("appStorage.get", "customTerms");
-            if (!string.IsNullOrEmpty(saved))
+            var savedTerms = await JS.InvokeAsync<string?>("appStorage.get", "customTerms");
+            if (!string.IsNullOrEmpty(savedTerms))
             {
-                _customTermsText = saved;
-                StateHasChanged();
+                _customTermsText = savedTerms;
+            }
+
+            var savedAllowed = await JS.InvokeAsync<string?>("appStorage.get", "allowedTerms");
+            if (!string.IsNullOrEmpty(savedAllowed))
+            {
+                _allowedTermsText = savedAllowed;
+            }
+
+            // Gespeicherte Zuordnung laden, damit Antworten/Skripte auch nach einem
+            // Neustart noch zurückübersetzt werden können.
+            var savedMappings = await JS.InvokeAsync<string?>("appStorage.get", "mappings");
+            if (!string.IsNullOrEmpty(savedMappings))
+            {
+                _activeMappings = ParseMappings(savedMappings);
+            }
+
+            var savedLang = await JS.InvokeAsync<string?>("appStorage.get", "language");
+            _langCode = savedLang is null ? "de" : savedLang;
+            Loc.Set(LocalizationService.FromCode(_langCode));
+
+            _llmModel = await JS.InvokeAsync<string?>("appStorage.get", "llmModel") ?? string.Empty;
+            // KI-Erkennung ist standardmässig an – aus nur, wenn der Benutzer sie abgeschaltet hat.
+            _llmEnabled = await JS.InvokeAsync<string?>("appStorage.get", "llmEnabled") != "0";
+            StateHasChanged();
+
+            if (_llmEnabled)
+            {
+                await CheckLlmAsync();
             }
         }
     }
 
-    private void RunAnonymize()
+    private async Task LanguageChangedAsync()
     {
+        Loc.Set(LocalizationService.FromCode(_langCode));
+        await JS.InvokeVoidAsync("appStorage.set", "language", _langCode);
+    }
+
+    private async Task LlmToggledAsync(ChangeEventArgs e)
+    {
+        _llmEnabled = e.Value is true;
+        await JS.InvokeVoidAsync("appStorage.set", "llmEnabled", _llmEnabled ? "1" : "0");
+        if (_llmEnabled)
+        {
+            await CheckLlmAsync();
+        }
+    }
+
+    private async Task CheckLlmAsync()
+    {
+        _llmStatus = LlmStatus.Checking;
+        StateHasChanged();
+        await EnsureLlmAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Sorgt dafür, dass die KI-Erkennung ohne Zutun des Benutzers einsatzbereit wird:
+    /// Ollama suchen, ein brauchbares Modell wählen – und falls keines installiert ist,
+    /// das Standardmodell im Hintergrund herunterladen.
+    /// </summary>
+    private async Task EnsureLlmAsync()
+    {
+        var state = await Llm.GetStateAsync();
+        if (!state.Reachable)
+        {
+            _llmStatus = LlmStatus.Offline;
+            return;
+        }
+
+        // Embedding-Modelle können nicht chatten und kommen nicht in Frage.
+        var chatModels = state.Models.Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase)).ToList();
+        _llmModels = chatModels;
+        var pick = chatModels.FirstOrDefault(m => m == _llmModel)
+                ?? chatModels.FirstOrDefault(m => m.StartsWith(Llm.DefaultModel, StringComparison.OrdinalIgnoreCase))
+                ?? chatModels.FirstOrDefault();
+        if (pick is not null)
+        {
+            _llmModel = pick;
+            _llmStatus = LlmStatus.Ready;
+            _ = WarmUpQuietlyAsync(pick);
+            return;
+        }
+
+        // Ollama läuft, aber kein Modell installiert → Standardmodell automatisch holen.
+        _ = PullDefaultModelAsync();
+    }
+
+    private async Task PullDefaultModelAsync()
+    {
+        _llmStatus = LlmStatus.Pulling;
+        _pullPercent = 0;
+        await InvokeAsync(StateHasChanged);
+
+        var progress = new Progress<LlmPullProgress>(p =>
+        {
+            if (p.Percent is int pc && pc != _pullPercent)
+            {
+                _pullPercent = pc;
+                _ = InvokeAsync(StateHasChanged);
+            }
+        });
+
+        bool ok;
+        try
+        {
+            ok = await Llm.PullModelAsync(Llm.DefaultModel, progress);
+        }
+        catch
+        {
+            ok = false;
+        }
+
+        if (!ok)
+        {
+            _llmStatus = LlmStatus.PullFailed;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var state = await Llm.GetStateAsync();
+        _llmModels = state.Models.Where(m => !m.Contains("embed", StringComparison.OrdinalIgnoreCase)).ToList();
+        _llmModel = _llmModels.FirstOrDefault(m => m.StartsWith(Llm.DefaultModel, StringComparison.OrdinalIgnoreCase))
+                 ?? Llm.DefaultModel;
+        _llmStatus = LlmStatus.Ready;
+        await InvokeAsync(StateHasChanged);
+        _ = WarmUpQuietlyAsync(_llmModel);
+    }
+
+    private async Task WarmUpQuietlyAsync(string model)
+    {
+        try
+        {
+            await Llm.WarmUpAsync(model);
+        }
+        catch
+        {
+            // Nur eine Beschleunigung – Fehler hier sind egal.
+        }
+    }
+
+    private async Task SaveLlmModelAsync()
+    {
+        await JS.InvokeVoidAsync("appStorage.set", "llmModel", _llmModel);
+    }
+
+    private List<string> AllowedTerms => _allowedTermsText
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    /// <summary>Anzahl ersetzter besonders schützenswerter Angaben (revDSG).</summary>
+    private int SensitiveCount => _result?.Mappings.Count(m => m.Category == PiiCategory.Sensitiv) ?? 0;
+
+    /// <summary>Anzahl ersetzter Werte je Kategorie (für die Zusammenfassung/Badges).</summary>
+    private IReadOnlyList<(PiiCategory Category, int Count)> CategoryCounts =>
+        _result is null
+            ? Array.Empty<(PiiCategory, int)>()
+            : _result.Mappings
+                .GroupBy(m => m.Category)
+                .OrderByDescending(g => g.Count())
+                .Select(g => (g.Key, g.Count()))
+                .ToList();
+
+    private async Task PasteInputAsync()
+    {
+        var text = await JS.InvokeAsync<string?>("appClipboard.paste");
+        if (!string.IsNullOrEmpty(text))
+        {
+            _inputText = text;
+        }
+    }
+
+    private void ApplyOptionLists()
+    {
+        _options.Language = Loc.Language;
         _options.EigeneBegriffe = _customTermsText
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(t => new CustomTerm(t))
             .ToList();
+        _options.ErlaubteWerte = AllowedTerms;
+    }
 
-        _result = Anonymizer.Anonymize(_inputText, _options);
+    private async Task RunAnonymizeAsync()
+    {
+        _busy = true;
+        _llmFailed = false;
+        ApplyOptionLists();
+
+        // Falls Ollama inzwischen gestartet wurde, ohne Neuladen der Seite erkennen.
+        if (_llmEnabled && _llmStatus == LlmStatus.Offline)
+        {
+            await EnsureLlmAsync();
+        }
+
+        IReadOnlyList<LlmEntity>? llmFindings = null;
+        if (_llmEnabled && _llmStatus == LlmStatus.Ready && _llmModel.Length > 0 && !string.IsNullOrWhiteSpace(_inputText))
+        {
+            StateHasChanged();
+            try
+            {
+                llmFindings = await Llm.DetectPiiAsync(_inputText, _llmModel);
+            }
+            catch
+            {
+                // Ollama nicht erreichbar oder Modellfehler → nur Regex-Ergebnis anzeigen.
+                _llmFailed = true;
+                _llmStatus = LlmStatus.Offline;
+            }
+        }
+
+        _lastLlmFindings = llmFindings;
+        _result = Anonymizer.Anonymize(_inputText, _options, llmFindings);
+        await StoreResultMappingsAsync();
+        _deanonymized = null;
+        _copied = null;
+        _busy = false;
+    }
+
+    /// <summary>Neu anonymisieren ohne erneuten LLM-Aufruf (z.B. nach Freigabe eines Werts).</summary>
+    private async Task ReAnonymizeAsync()
+    {
+        ApplyOptionLists();
+        _result = Anonymizer.Anonymize(_inputText, _options, _lastLlmFindings);
+        await StoreResultMappingsAsync();
         _deanonymized = null;
         _copied = null;
     }
 
-    private void RunDeanonymize()
+    private async Task StoreResultMappingsAsync()
     {
+        if (_result is null)
+        {
+            return;
+        }
+        _activeMappings = _result.Mappings.ToList();
+        await JS.InvokeVoidAsync("appStorage.set", "mappings", SerializeMappings(_activeMappings));
+    }
+
+    // ---- Zuordnung speichern / exportieren / importieren --------------------
+    // Dateiformat identisch mit der Browser-Erweiterung, damit Zuordnungen
+    // zwischen App und Erweiterung ausgetauscht werden können.
+
+    private sealed record MappingDto(string Placeholder, string Original, string Category);
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
+    };
+
+    private static string SerializeMappings(IEnumerable<MappingEntry> mappings) =>
+        JsonSerializer.Serialize(mappings.Select(m => new MappingDto(m.Placeholder, m.Original, PiiCategoryIds.ToId(m.Category))), JsonOpts);
+
+    private static List<MappingEntry> ParseMappings(string json)
+    {
+        try
+        {
+            var dtos = JsonSerializer.Deserialize<List<MappingDto>>(json, JsonOpts) ?? new();
+            return dtos
+                .Where(d => !string.IsNullOrEmpty(d.Placeholder) && d.Original is not null)
+                .Select(d => new MappingEntry(d.Placeholder, d.Original, PiiCategoryIds.FromId(d.Category)))
+                .ToList();
+        }
+        catch (JsonException)
+        {
+            return new List<MappingEntry>();
+        }
+    }
+
+    private async Task ExportMappingsAsync()
+    {
+        if (_activeMappings.Count > 0)
+        {
+            var name = $"anonymizer-mapping-{DateTime.Now:yyyyMMdd-HHmm}.json";
+            await JS.InvokeVoidAsync("appFile.download", name, SerializeMappings(_activeMappings));
+        }
+    }
+
+    private async Task ImportMappingsAsync(InputFileChangeEventArgs e)
+    {
+        using var reader = new StreamReader(e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+        var imported = ParseMappings(await reader.ReadToEndAsync());
+        if (imported.Count > 0)
+        {
+            _activeMappings = imported;
+            await JS.InvokeVoidAsync("appStorage.set", "mappings", SerializeMappings(_activeMappings));
+            _deanonymized = null;
+        }
+    }
+
+    private async Task DeleteMappingsAsync()
+    {
+        _activeMappings = new List<MappingEntry>();
+        _result = null;
+        _deanonymized = null;
+        await JS.InvokeVoidAsync("appStorage.remove", "mappings");
+    }
+
+    private async Task AllowValueAsync(string original)
+    {
+        var terms = AllowedTerms;
+        if (!terms.Contains(original, StringComparer.OrdinalIgnoreCase))
+        {
+            terms.Add(original);
+        }
+        _allowedTermsText = string.Join('\n', terms);
+        await JS.InvokeVoidAsync("appStorage.set", "allowedTerms", _allowedTermsText);
+        await ReAnonymizeAsync();
+    }
+
+    private async Task RemoveAllowedAsync(string term)
+    {
+        _allowedTermsText = string.Join('\n', AllowedTerms.Where(t => !string.Equals(t, term, StringComparison.OrdinalIgnoreCase)));
+        await JS.InvokeVoidAsync("appStorage.set", "allowedTerms", _allowedTermsText);
+        await ReAnonymizeAsync();
+    }
+
+    private async Task SaveAllowedTerms()
+    {
+        await JS.InvokeVoidAsync("appStorage.set", "allowedTerms", _allowedTermsText);
         if (_result is not null)
         {
-            _deanonymized = Anonymizer.Deanonymize(_responseText, _result.Mappings);
+            await ReAnonymizeAsync();
+        }
+    }
+
+    private void RunDeanonymize()
+    {
+        if (_activeMappings.Count > 0)
+        {
+            _deanonymized = Anonymizer.Deanonymize(_responseText, _activeMappings);
             _copied = null;
         }
     }
@@ -185,6 +678,7 @@
         _result = null;
         _deanonymized = null;
         _copied = null;
+        _llmFailed = false;
     }
 
     private async Task SaveCustomTerms()

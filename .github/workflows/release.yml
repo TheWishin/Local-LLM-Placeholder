@@ -1,13 +1,25 @@
 name: Release
 
-# Erstellt bei einem Tag wie v1.0.0 fertige Pakete für Windows, Linux und macOS.
-# Die Empfänger brauchen kein .NET – einfach entpacken und starten.
+# Erstellt fertige Pakete für Windows, Linux und macOS sowie das ZIP der
+# Browser-Erweiterung. Die Empfänger brauchen kein .NET – einfach entpacken
+# und starten. Auslösen entweder durch Pushen eines Tags wie v1.0.0 oder
+# manuell über "Run workflow" (der Tag wird dann automatisch erstellt).
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release-Version, z.B. v1.0.0'
+        required: true
 
 permissions:
   contents: write
+
+# Achtung: nicht "VERSION" nennen – MSBuild interpretiert die Umgebungsvariable
+# VERSION als .NET-Versionsnummer, und "v1.0.0" ist dafür ungültig.
+env:
+  RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
 
 jobs:
   release:
@@ -22,15 +34,67 @@ jobs:
       - name: Test
         run: dotnet run --project tests/DataAnonymizer.Tests -c Release
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test browser extension engine
+        run: |
+          node extension/engine.test.mjs
+          node extension/image.test.mjs
+
+      - name: OCR-Bausteine für die Bild-Anonymisierung holen
+        run: bash scripts/fetch-ocr-assets.sh
+
       - name: Publish (alle Plattformen)
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
             dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
-            (cd publish && zip -qr "../DataAnonymizer-${GITHUB_REF_NAME}-$rid.zip" "$rid")
+            # Passenden One-Click-Installer + START-HERE beilegen, damit die
+            # Empfänger nur eine Datei anklicken müssen (Ollama installiert sich selbst).
+            case "$rid" in
+              win-x64)
+                cp installers/Install-Windows.bat "publish/$rid/"
+                cp installers/START-HERE-Windows.txt "publish/$rid/START HERE.txt" ;;
+              osx-x64|osx-arm64)
+                cp installers/Install-macOS.command "publish/$rid/"
+                chmod +x "publish/$rid/Install-macOS.command"
+                cp installers/START-HERE-macOS.txt "publish/$rid/START HERE.txt" ;;
+              linux-x64)
+                cp installers/Install-Linux.sh "publish/$rid/"
+                chmod +x "publish/$rid/Install-Linux.sh"
+                cp installers/START-HERE-Linux.txt "publish/$rid/START HERE.txt" ;;
+            esac
+            (cd publish && zip -qr "../DataAnonymizer-${RELEASE_VERSION}-$rid.zip" "$rid")
           done
+
+      - name: API-Gateway paketieren (alle Plattformen)
+        run: |
+          for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
+            dotnet publish src/DataAnonymizer.Proxy -c Release -r "$rid" --self-contained -o "gateway/$rid"
+            cp installers/GATEWAY-README.txt "gateway/$rid/README.txt"
+            case "$rid" in
+              win-x64)
+                cp installers/Start-Gateway-Windows.bat "gateway/$rid/" ;;
+              osx-x64|osx-arm64)
+                cp installers/start-gateway-macOS.command "gateway/$rid/"
+                chmod +x "gateway/$rid/start-gateway-macOS.command" ;;
+              linux-x64)
+                cp installers/start-gateway-Linux.sh "gateway/$rid/"
+                chmod +x "gateway/$rid/start-gateway-Linux.sh" ;;
+            esac
+            (cd gateway && zip -qr "../DataAnonymizer-Gateway-${RELEASE_VERSION}-$rid.zip" "$rid")
+          done
+
+      - name: Browser-Erweiterung paketieren (Chrome/Edge, inkl. OCR-Dateien)
+        run: |
+          zip -qr "DataAnonymizer-${RELEASE_VERSION}-browser-extension.zip" extension \
+            -x "extension/engine.test.mjs" "extension/image.test.mjs"
 
       - name: GitHub-Release erstellen
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: DataAnonymizer-*.zip
           generate_release_notes: true

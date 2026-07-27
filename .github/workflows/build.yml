@@ -20,3 +20,12 @@ jobs:
 
       - name: Test
         run: dotnet run --project tests/DataAnonymizer.Tests -c Release --no-build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test browser extension engine
+        run: |
+          node extension/engine.test.mjs
+          node extension/image.test.mjs

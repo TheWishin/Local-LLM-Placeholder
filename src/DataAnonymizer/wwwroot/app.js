@@ -14,6 +14,16 @@ window.appClipboard = {
         ta.select();
         document.execCommand("copy");
         document.body.removeChild(ta);
+    },
+    paste: async function () {
+        try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                return await navigator.clipboard.readText();
+            }
+        } catch (e) {
+            // Zugriff verweigert oder nicht verfügbar – leeren String liefern.
+        }
+        return "";
     }
 };
 
@@ -23,5 +33,22 @@ window.appStorage = {
     },
     set: function (key, value) {
         window.localStorage.setItem(key, value);
+    },
+    remove: function (key) {
+        window.localStorage.removeItem(key);
+    }
+};
+
+window.appFile = {
+    download: function (filename, text) {
+        const blob = new Blob([text], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 };

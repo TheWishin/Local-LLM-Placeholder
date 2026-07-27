@@ -1,0 +1,23 @@
+{
+    "extName": {
+        "message": "Anonimizzatore di dati (locale)"
+    },
+    "extDescription": {
+        "message": "Sostituisce i dati personali con segnaposto prima di incollare un testo in uno strumento di IA - 100% locale, opzionalmente con un LLM locale via Ollama."
+    },
+    "ctxAnonymize": {
+        "message": "🔒 Anonimizza selezione (copia)"
+    },
+    "ctxDeanonymize": {
+        "message": "🔓 Ripristina selezione (copia)"
+    },
+    "notifyAnonymized": {
+        "message": "Anonimizzato e copiato"
+    },
+    "notifyRestored": {
+        "message": "Ripristinato e copiato"
+    },
+    "notifyNoMapping": {
+        "message": "Nessuna tabella salvata - anonimizza prima un testo."
+    }
+}

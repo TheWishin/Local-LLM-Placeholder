@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0F55D5E0
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAnonymizer.Tests", "tests\DataAnonymizer.Tests\DataAnonymizer.Tests.csproj", "{AF038129-7E19-4579-A3FC-9A1504531898}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAnonymizer.Proxy", "src\DataAnonymizer.Proxy\DataAnonymizer.Proxy.csproj", "{16FE13A3-1000-4AA4-AF5B-3C05A726B943}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,10 +36,15 @@ Global
 		{AF038129-7E19-4579-A3FC-9A1504531898}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AF038129-7E19-4579-A3FC-9A1504531898}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AF038129-7E19-4579-A3FC-9A1504531898}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16FE13A3-1000-4AA4-AF5B-3C05A726B943}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16FE13A3-1000-4AA4-AF5B-3C05A726B943}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16FE13A3-1000-4AA4-AF5B-3C05A726B943}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16FE13A3-1000-4AA4-AF5B-3C05A726B943}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5C149A52-2340-402C-8EC3-EA41ACB14034} = {954E86E3-F59F-454C-A8B9-26F512042C51}
 		{89572797-2A21-4837-91D8-EB26518B007D} = {954E86E3-F59F-454C-A8B9-26F512042C51}
 		{AF038129-7E19-4579-A3FC-9A1504531898} = {0F55D5E0-E65A-4762-9C97-3751C8E6EFF9}
+		{16FE13A3-1000-4AA4-AF5B-3C05A726B943} = {954E86E3-F59F-454C-A8B9-26F512042C51}
 	EndGlobalSection
 EndGlobal

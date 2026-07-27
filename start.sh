@@ -9,6 +9,12 @@ if ! command -v dotnet >/dev/null 2>&1; then
     exit 1
 fi
 
+# Ollama automatisch starten, falls installiert, aber noch nicht aktiv (KI-Erkennung).
+if command -v ollama >/dev/null 2>&1 && ! curl -s --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1; then
+    echo "Starte Ollama im Hintergrund ..."
+    (ollama serve >/dev/null 2>&1 &)
+fi
+
 URL="http://localhost:5100"
 (
     sleep 3
