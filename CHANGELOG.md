@@ -21,11 +21,18 @@ detection logic and are versioned together.
   ausführen).
 
 ### Performance
+- **Sofortiges Ergebnis beim Anonymisieren.** Der schnelle Muster-Treffer wird
+  jetzt **sofort** angezeigt; die lokale KI (Ollama) läuft im Hintergrund und
+  **ergänzt** ihre Funde, sobald sie fertig ist – statt das erste Ergebnis zu
+  blockieren. Gilt für App und Erweiterung. Ein langsames oder abgeschaltetes LLM
+  verzögert die Ausgabe damit nicht mehr.
 - **Schnellere Rückübersetzung.** Die De-Anonymisierung baut jetzt einmal eine
   Nachschlagetabelle und ersetzt in **einem** Durchgang, statt pro Platzhalter ein
   eigenes Regex zu kompilieren (vorher O(Text × Platzhalter), jetzt O(Text)).
   Spürbar vor allem im API-Gateway, das viele Felder einer Antwort zurückübersetzt
   – sowohl im C#- als auch im JavaScript-Motor.
+- **PDF bevorzugt die eingebettete Textebene** (schnell) und nutzt OCR nur für
+  gescannte Seiten – digitale PDFs werden dadurch deutlich schneller geschwärzt.
 
 ## [1.7.2] - 2026-07-27
 

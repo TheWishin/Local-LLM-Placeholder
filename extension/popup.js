@@ -457,10 +457,12 @@ async function ensureLlm({ allowPull = true } = {}) {
 
 // ---- Aktionen -------------------------------------------------------------
 
+// Zählt Anonymisier-Läufe, damit ein langsames LLM-Ergebnis ein neueres
+// (oder eine geänderte Eingabe) nicht überschreibt.
+let anonGen = 0;
+
 async function runAnonymize() {
-    state.busy = true;
-    $('anonymizeBtn').disabled = true;
-    $('anonymizeBtn').textContent = t().btnAnonymizeBusy;
+    const s = t();
     $('llmErrorNote').classList.add('hidden');
 
     const text = $('inputText').value;
@@ -471,34 +473,48 @@ async function runAnonymize() {
         allowedTerms: allowedTermsList()
     };
 
-    // Falls Ollama inzwischen gestartet wurde, ohne Neuöffnen erkennen.
-    // Kein Modell-Download hier – Anonymisieren soll immer sofort laufen.
-    if (state.llmEnabled && state.llmStatus === 'offline') {
-        await ensureLlm({ allowPull: false });
-    }
-
-    let llmFindings = null;
-    if (state.llmEnabled && state.llmStatus === 'ready' && state.llmModel && text.trim()) {
-        try {
-            llmFindings = await ollama.detectPii(text, state.llmModel, state.llmEndpoint);
-        } catch {
-            $('llmErrorNote').classList.remove('hidden');
-            state.llmStatus = 'offline';
-            renderLlm();
-        }
-    }
-
-    state.lastLlmFindings = llmFindings;
-    const result = anonymize(text, options, llmFindings);
-    showResult(result.anonymizedText, result.mappings);
+    // 1. SOFORT: schnelles Muster-Ergebnis anzeigen – ohne auf die KI zu warten.
+    const gen = ++anonGen;
+    const fast = anonymize(text, options, null);
+    state.lastLlmFindings = null;
+    showResult(fast.anonymizedText, fast.mappings);
     $('restoredText').classList.add('hidden');
     $('copyRestoredBtn').classList.add('hidden');
     $('restoredText').value = '';
-
-    state.busy = false;
-    $('anonymizeBtn').disabled = false;
-    $('anonymizeBtn').textContent = t().btnAnonymize;
     saveSession();
+
+    // 2. Lokale KI im Hintergrund dazuholen und das Ergebnis danach ergänzen.
+    if (!state.llmEnabled || !text.trim()) {
+        return;
+    }
+    if (state.llmStatus === 'offline') {
+        await ensureLlm({ allowPull: false });
+    }
+    if (state.llmStatus !== 'ready' || !state.llmModel || gen !== anonGen) {
+        return;
+    }
+
+    state.busy = true;
+    $('anonymizeBtn').disabled = true;
+    $('anonymizeBtn').textContent = s.btnAnonymizeBusy;
+    try {
+        const findings = await ollama.detectPii(text, state.llmModel, state.llmEndpoint);
+        // Nur übernehmen, wenn inzwischen kein neuer Lauf gestartet wurde.
+        if (gen === anonGen && findings && findings.length > 0) {
+            state.lastLlmFindings = findings;
+            const full = anonymize(text, options, findings);
+            showResult(full.anonymizedText, full.mappings);
+            saveSession();
+        }
+    } catch {
+        $('llmErrorNote').classList.remove('hidden');
+        state.llmStatus = 'offline';
+        renderLlm();
+    } finally {
+        state.busy = false;
+        $('anonymizeBtn').disabled = false;
+        $('anonymizeBtn').textContent = t().btnAnonymize;
+    }
 }
 
 function runDeanonymize() {
