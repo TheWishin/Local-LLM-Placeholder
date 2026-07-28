@@ -350,7 +350,7 @@ public sealed class AnonymizerService
     /// Umformatierungen durch KI-Tools: [ name_1 ] oder [Name_1] werden auch erkannt.
     /// </summary>
     public string Deanonymize(string text, IEnumerable<MappingEntry> mappings)
-        => Deanonymize(text, mappings, transform: null);
+        => BuildDeanonymizer(mappings, transform: null)(text);
 
     /// <summary>
     /// Wie <see cref="Deanonymize(string, IEnumerable{MappingEntry})"/>, aber der
@@ -360,24 +360,49 @@ public sealed class AnonymizerService
     /// JSON-escaped werden, sonst zerbricht das Fragment an Anführungszeichen.
     /// </summary>
     public string Deanonymize(string text, IEnumerable<MappingEntry> mappings, Func<string, string>? transform)
-    {
-        if (string.IsNullOrEmpty(text))
-        {
-            return text ?? string.Empty;
-        }
+        => BuildDeanonymizer(mappings, transform)(text);
 
-        var result = text;
+    // Jede [ ... ]-Klammer (ohne verschachtelte Klammern) – in einem Durchgang.
+    private static readonly Regex PlaceholderRx = new(@"\[\s*([^\[\]]+?)\s*\]", Opts);
+
+    /// <summary>
+    /// Baut EINE wiederverwendbare Rückübersetzungs-Funktion aus einer Zuordnungstabelle.
+    /// Statt pro Platzhalter und pro Textstück ein eigenes Regex zu kompilieren
+    /// (O(Text × Platzhalter)), wird eine Nachschlagetabelle gebaut und der Text in
+    /// einem einzigen Durchgang ersetzt (O(Text)). Das ist v.a. für das API-Gateway
+    /// wichtig, das viele Textfelder einer Antwort zurückübersetzt.
+    /// Tolerant gegenüber Umformatierungen: [ name_1 ] oder [Name_1] werden erkannt.
+    /// </summary>
+    public Func<string, string> BuildDeanonymizer(IEnumerable<MappingEntry> mappings, Func<string, string>? transform = null)
+    {
+        var byInner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var m in mappings)
         {
-            var replacement = transform is null ? m.Original : transform(m.Original);
-            result = result.Replace(m.Placeholder, replacement);
-            // Zweiter Durchgang für Varianten; MatchEvaluator, damit $-Zeichen
-            // im Originalwert nicht als Ersetzungsmuster interpretiert werden.
-            var inner = m.Placeholder.Trim('[', ']');
-            result = Regex.Replace(result, @"\[\s*" + Regex.Escape(inner) + @"\s*\]",
-                _ => replacement, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            var inner = m.Placeholder.Trim('[', ']').Trim();
+            if (inner.Length == 0 || byInner.ContainsKey(inner))
+            {
+                continue;
+            }
+            byInner[inner] = transform is null ? m.Original : transform(m.Original);
         }
-        return result;
+
+        if (byInner.Count == 0)
+        {
+            return static text => text ?? string.Empty;
+        }
+
+        return text =>
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text ?? string.Empty;
+            }
+            // MatchEvaluator: Rückgabewert wird wörtlich eingesetzt ($-Zeichen sind kein Problem).
+            return PlaceholderRx.Replace(text, match =>
+                byInner.TryGetValue(match.Groups[1].Value.Trim(), out var replacement)
+                    ? replacement
+                    : match.Value);
+        };
     }
 
     // ---- Interne Logik ----------------------------------------------------

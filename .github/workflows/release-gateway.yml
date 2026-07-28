@@ -42,6 +42,7 @@ jobs:
         run: |
           node extension/engine.test.mjs
           node extension/image.test.mjs
+          node extension/pdf.test.mjs
 
       - name: OCR-Bausteine für die Bild-Anonymisierung holen
         run: bash scripts/fetch-ocr-assets.sh
@@ -91,7 +92,7 @@ jobs:
       - name: Browser-Erweiterung paketieren (Chrome/Edge, inkl. OCR-Dateien)
         run: |
           zip -qr "DataAnonymizer-${V}-browser-extension.zip" extension \
-            -x "extension/engine.test.mjs" "extension/image.test.mjs"
+            -x "extension/engine.test.mjs" "extension/image.test.mjs" "extension/pdf.test.mjs"
 
       - name: GitHub-Release (mit Gateway) erstellen
         uses: softprops/action-gh-release@v2

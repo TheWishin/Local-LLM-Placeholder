@@ -189,6 +189,9 @@ public static class AnthropicRewriter
             return json;
         }
 
+        // Die Rückübersetzungs-Funktion EINMAL bauen und auf alle Strings anwenden.
+        var deanon = service.BuildDeanonymizer(mappings);
+
         JsonNode? root;
         try
         {
@@ -197,18 +200,18 @@ public static class AnthropicRewriter
         catch (JsonException)
         {
             // Kein JSON (z.B. eine Fehlermeldung im Klartext): direkt ersetzen.
-            return service.Deanonymize(json, mappings);
+            return deanon(json);
         }
         if (root is null)
         {
             return json;
         }
 
-        DeanonymizeNode(root, mappings, service);
+        DeanonymizeNode(root, deanon);
         return root.ToJsonString(SerializerOptions);
     }
 
-    private static void DeanonymizeNode(JsonNode node, IReadOnlyList<MappingEntry> mappings, AnonymizerService service)
+    private static void DeanonymizeNode(JsonNode node, Func<string, string> deanon)
     {
         switch (node)
         {
@@ -218,7 +221,7 @@ public static class AnthropicRewriter
                     var child = obj[key];
                     if (child is JsonValue val && val.TryGetValue<string>(out var s))
                     {
-                        var restored = service.Deanonymize(s, mappings);
+                        var restored = deanon(s);
                         if (!ReferenceEquals(restored, s) && restored != s)
                         {
                             obj[key] = restored;
@@ -226,7 +229,7 @@ public static class AnthropicRewriter
                     }
                     else if (child is not null)
                     {
-                        DeanonymizeNode(child, mappings, service);
+                        DeanonymizeNode(child, deanon);
                     }
                 }
                 break;
@@ -236,7 +239,7 @@ public static class AnthropicRewriter
                     var child = arr[i];
                     if (child is JsonValue val && val.TryGetValue<string>(out var s))
                     {
-                        var restored = service.Deanonymize(s, mappings);
+                        var restored = deanon(s);
                         if (restored != s)
                         {
                             arr[i] = restored;
@@ -244,7 +247,7 @@ public static class AnthropicRewriter
                     }
                     else if (child is not null)
                     {
-                        DeanonymizeNode(child, mappings, service);
+                        DeanonymizeNode(child, deanon);
                     }
                 }
                 break;

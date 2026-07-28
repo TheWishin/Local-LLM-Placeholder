@@ -6,6 +6,7 @@
 import { anonymize, deanonymize, labelFor, defaultOptions } from './engine.js';
 import * as ollama from './ollama.js';
 import * as imaging from './image.js';
+import * as pdfing from './pdf.js';
 import { LANGUAGES, STRINGS, detectLanguage, format } from './i18n.js';
 
 const $ = id => document.getElementById(id);
@@ -136,6 +137,11 @@ function renderTexts() {
     $('imageUnavailable').textContent = s.imageUnavailable;
     $('imageRunBtn').textContent = s.imageRun;
     $('imageDownloadBtn').textContent = s.imageDownload;
+    $('pdfTitle').textContent = s.pdfTitle;
+    $('pdfHint').textContent = s.pdfHint;
+    $('pdfUnavailable').textContent = s.pdfUnavailable;
+    $('pdfRunBtn').textContent = s.pdfRun;
+    $('pdfDownloadBtn').textContent = s.pdfDownload;
 
     const grid = $('optionsGrid');
     grid.innerHTML = '';
@@ -451,10 +457,12 @@ async function ensureLlm({ allowPull = true } = {}) {
 
 // ---- Aktionen -------------------------------------------------------------
 
+// Zählt Anonymisier-Läufe, damit ein langsames LLM-Ergebnis ein neueres
+// (oder eine geänderte Eingabe) nicht überschreibt.
+let anonGen = 0;
+
 async function runAnonymize() {
-    state.busy = true;
-    $('anonymizeBtn').disabled = true;
-    $('anonymizeBtn').textContent = t().btnAnonymizeBusy;
+    const s = t();
     $('llmErrorNote').classList.add('hidden');
 
     const text = $('inputText').value;
@@ -465,34 +473,48 @@ async function runAnonymize() {
         allowedTerms: allowedTermsList()
     };
 
-    // Falls Ollama inzwischen gestartet wurde, ohne Neuöffnen erkennen.
-    // Kein Modell-Download hier – Anonymisieren soll immer sofort laufen.
-    if (state.llmEnabled && state.llmStatus === 'offline') {
-        await ensureLlm({ allowPull: false });
-    }
-
-    let llmFindings = null;
-    if (state.llmEnabled && state.llmStatus === 'ready' && state.llmModel && text.trim()) {
-        try {
-            llmFindings = await ollama.detectPii(text, state.llmModel, state.llmEndpoint);
-        } catch {
-            $('llmErrorNote').classList.remove('hidden');
-            state.llmStatus = 'offline';
-            renderLlm();
-        }
-    }
-
-    state.lastLlmFindings = llmFindings;
-    const result = anonymize(text, options, llmFindings);
-    showResult(result.anonymizedText, result.mappings);
+    // 1. SOFORT: schnelles Muster-Ergebnis anzeigen – ohne auf die KI zu warten.
+    const gen = ++anonGen;
+    const fast = anonymize(text, options, null);
+    state.lastLlmFindings = null;
+    showResult(fast.anonymizedText, fast.mappings);
     $('restoredText').classList.add('hidden');
     $('copyRestoredBtn').classList.add('hidden');
     $('restoredText').value = '';
-
-    state.busy = false;
-    $('anonymizeBtn').disabled = false;
-    $('anonymizeBtn').textContent = t().btnAnonymize;
     saveSession();
+
+    // 2. Lokale KI im Hintergrund dazuholen und das Ergebnis danach ergänzen.
+    if (!state.llmEnabled || !text.trim()) {
+        return;
+    }
+    if (state.llmStatus === 'offline') {
+        await ensureLlm({ allowPull: false });
+    }
+    if (state.llmStatus !== 'ready' || !state.llmModel || gen !== anonGen) {
+        return;
+    }
+
+    state.busy = true;
+    $('anonymizeBtn').disabled = true;
+    $('anonymizeBtn').textContent = s.btnAnonymizeBusy;
+    try {
+        const findings = await ollama.detectPii(text, state.llmModel, state.llmEndpoint);
+        // Nur übernehmen, wenn inzwischen kein neuer Lauf gestartet wurde.
+        if (gen === anonGen && findings && findings.length > 0) {
+            state.lastLlmFindings = findings;
+            const full = anonymize(text, options, findings);
+            showResult(full.anonymizedText, full.mappings);
+            saveSession();
+        }
+    } catch {
+        $('llmErrorNote').classList.remove('hidden');
+        state.llmStatus = 'offline';
+        renderLlm();
+    } finally {
+        state.busy = false;
+        $('anonymizeBtn').disabled = false;
+        $('anonymizeBtn').textContent = t().btnAnonymize;
+    }
 }
 
 function runDeanonymize() {
@@ -663,6 +685,7 @@ async function main() {
     $('responseText').addEventListener('input', saveSession);
 
     initImage();
+    initPdf();
 
     renderTexts();
     if (state.llmEnabled) {
@@ -768,6 +791,89 @@ function downloadRedacted() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 'image/png');
+}
+
+// ---- PDF-Anonymisierung ---------------------------------------------------
+
+let redactedPdfBlob = null;
+
+async function initPdf() {
+    const available = await pdfing.isPdfAvailable();
+    if (!available) {
+        // Ohne gebündelte PDF.js-Dateien den Bereich als nicht verfügbar zeigen.
+        $('pdfUnavailable').classList.remove('hidden');
+        $('pdfControls').classList.add('hidden');
+        return;
+    }
+    $('pdfFile').addEventListener('change', () => {
+        $('pdfRunBtn').disabled = !$('pdfFile').files?.[0];
+        $('pdfResult').classList.add('hidden');
+        $('pdfStatus').textContent = '';
+        $('pdfSensitive').classList.add('hidden');
+    });
+    $('pdfRunBtn').addEventListener('click', runPdfRedaction);
+    $('pdfDownloadBtn').addEventListener('click', downloadRedactedPdf);
+}
+
+async function runPdfRedaction() {
+    const file = $('pdfFile').files?.[0];
+    if (!file) {
+        return;
+    }
+    const s = t();
+    $('pdfRunBtn').disabled = true;
+    $('pdfResult').classList.add('hidden');
+    $('pdfSensitive').classList.add('hidden');
+    $('pdfProgressWrap').classList.remove('hidden');
+    $('pdfProgressBar').style.width = '5%';
+    $('pdfStatus').textContent = format(s.pdfReading, 0);
+
+    try {
+        const options = {
+            ...state.options,
+            language: state.lang,
+            customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean),
+            allowedTerms: allowedTermsList()
+        };
+        const langs = ocrLangsFor(state.lang);
+        const result = await pdfing.redactPdf(file, options, langs, pc => {
+            $('pdfProgressBar').style.width = `${pc}%`;
+            $('pdfStatus').textContent = format(s.pdfReading, pc);
+        });
+
+        redactedPdfBlob = result.blob;
+        $('pdfProgressWrap').classList.add('hidden');
+        $('pdfStatus').textContent = result.mappings.length > 0
+            ? format(s.pdfDone, result.pageCount, result.mappings.length)
+            : s.pdfNone;
+        $('pdfDownloadBtn').textContent = s.pdfDownload;
+        $('pdfResult').classList.remove('hidden');
+
+        if (result.sensitiveCount > 0) {
+            $('pdfSensitive').textContent = format(s.sensitiveWarning, result.sensitiveCount);
+            $('pdfSensitive').classList.remove('hidden');
+        }
+    } catch (e) {
+        $('pdfProgressWrap').classList.add('hidden');
+        $('pdfStatus').textContent = s.pdfError;
+    } finally {
+        $('pdfRunBtn').disabled = false;
+    }
+}
+
+function downloadRedactedPdf() {
+    if (!redactedPdfBlob) {
+        return;
+    }
+    const url = URL.createObjectURL(redactedPdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    a.download = `redacted-${stamp}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 main();

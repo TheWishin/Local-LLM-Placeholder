@@ -517,40 +517,60 @@
         _options.ErlaubteWerte = AllowedTerms;
     }
 
+    // Zählt Anonymisier-Läufe, damit ein langsames LLM-Ergebnis ein neueres nicht überschreibt.
+    private int _anonGen;
+
     private async Task RunAnonymizeAsync()
     {
-        _busy = true;
         _llmFailed = false;
         ApplyOptionLists();
 
-        // Falls Ollama inzwischen gestartet wurde, ohne Neuladen der Seite erkennen.
-        if (_llmEnabled && _llmStatus == LlmStatus.Offline)
-        {
-            await EnsureLlmAsync();
-        }
-
-        IReadOnlyList<LlmEntity>? llmFindings = null;
-        if (_llmEnabled && _llmStatus == LlmStatus.Ready && _llmModel.Length > 0 && !string.IsNullOrWhiteSpace(_inputText))
-        {
-            StateHasChanged();
-            try
-            {
-                llmFindings = await Llm.DetectPiiAsync(_inputText, _llmModel);
-            }
-            catch
-            {
-                // Ollama nicht erreichbar oder Modellfehler → nur Regex-Ergebnis anzeigen.
-                _llmFailed = true;
-                _llmStatus = LlmStatus.Offline;
-            }
-        }
-
-        _lastLlmFindings = llmFindings;
-        _result = Anonymizer.Anonymize(_inputText, _options, llmFindings);
+        // 1. SOFORT: schnelles Muster-Ergebnis anzeigen – ohne auf die KI zu warten.
+        var gen = ++_anonGen;
+        _lastLlmFindings = null;
+        _result = Anonymizer.Anonymize(_inputText, _options, null);
         await StoreResultMappingsAsync();
         _deanonymized = null;
         _copied = null;
-        _busy = false;
+        StateHasChanged();
+
+        // 2. Lokale KI im Hintergrund dazuholen und das Ergebnis danach ergänzen.
+        if (!_llmEnabled || string.IsNullOrWhiteSpace(_inputText))
+        {
+            return;
+        }
+        if (_llmStatus == LlmStatus.Offline)
+        {
+            await EnsureLlmAsync();
+        }
+        if (_llmStatus != LlmStatus.Ready || _llmModel.Length == 0 || gen != _anonGen)
+        {
+            return;
+        }
+
+        _busy = true;
+        StateHasChanged();
+        try
+        {
+            var findings = await Llm.DetectPiiAsync(_inputText, _llmModel);
+            // Nur übernehmen, wenn inzwischen kein neuer Lauf gestartet wurde.
+            if (gen == _anonGen && findings is { Count: > 0 })
+            {
+                _lastLlmFindings = findings;
+                _result = Anonymizer.Anonymize(_inputText, _options, findings);
+                await StoreResultMappingsAsync();
+            }
+        }
+        catch
+        {
+            // Ollama nicht erreichbar oder Modellfehler → das Muster-Ergebnis bleibt stehen.
+            _llmFailed = true;
+            _llmStatus = LlmStatus.Offline;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     /// <summary>Neu anonymisieren ohne erneuten LLM-Aufruf (z.B. nach Freigabe eines Werts).</summary>

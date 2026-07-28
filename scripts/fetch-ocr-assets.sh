@@ -49,3 +49,15 @@ cp ddeu/package/4.0.0/deu.traineddata.gz "$DEST/lang/"
 
 echo "OCR assets ready in extension/vendor/tesseract/"
 du -sh "$DEST" | awk '{print "Total size:", $1}'
+
+# --- PDF.js (für die PDF-Anonymisierung) ---------------------------------
+PDFDEST="$HERE/../extension/vendor/pdfjs"
+mkdir -p "$PDFDEST"
+echo "Downloading PDF.js via npm ..."
+extract "pdfjs-dist@4" pdfjs
+# Moderner ESM-Build + zugehöriger Worker.
+cp pdfjs/package/build/pdf.min.mjs "$PDFDEST/"
+cp pdfjs/package/build/pdf.worker.min.mjs "$PDFDEST/"
+
+echo "PDF.js assets ready in extension/vendor/pdfjs/"
+du -sh "$PDFDEST" | awk '{print "Total size:", $1}'
