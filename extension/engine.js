@@ -241,16 +241,26 @@ export function deanonymize(text, mappings) {
     if (!text) {
         return '';
     }
-    let out = text;
-    for (const m of mappings) {
-        out = out.split(m.placeholder).join(m.original);
-        // Zweiter Durchgang für Varianten; Funktions-Ersetzung, damit $-Zeichen
-        // im Originalwert nicht als Ersetzungsmuster interpretiert werden.
-        const inner = m.placeholder.replace(/^\[|\]$/g, '');
-        const rx = new RegExp('\\[\\s*' + escapeRegex(inner) + '\\s*\\]', 'gi');
-        out = out.replace(rx, () => m.original);
+    if (!mappings || mappings.length === 0) {
+        return text;
     }
-    return out;
+    // Nachschlagetabelle: innerer Platzhaltername (ohne Klammern, ohne Gross-/Kleinschreibung)
+    // → Originalwert. Danach EIN Durchgang über den Text statt ein Regex je Platzhalter.
+    const byInner = new Map();
+    for (const m of mappings) {
+        if (!m || typeof m.placeholder !== 'string') {
+            continue;
+        }
+        const inner = m.placeholder.replace(/^\[|\]$/g, '').trim().toLowerCase();
+        if (inner && !byInner.has(inner)) {
+            byInner.set(inner, m.original ?? '');
+        }
+    }
+    // Funktions-Ersetzung: der Rückgabewert wird wörtlich eingesetzt, $-Zeichen sind unkritisch.
+    return text.replace(/\[\s*([^[\]]+?)\s*\]/g, (whole, inner) => {
+        const hit = byInner.get(inner.trim().toLowerCase());
+        return hit !== undefined ? hit : whole;
+    });
 }
 
 // ---- Interne Logik --------------------------------------------------------

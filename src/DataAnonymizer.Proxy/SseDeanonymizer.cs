@@ -20,8 +20,10 @@ namespace DataAnonymizer.Proxy;
 /// </summary>
 public sealed class SseDeanonymizer
 {
-    private readonly IReadOnlyList<MappingEntry> _mappings;
-    private readonly AnonymizerService _service;
+    // Zwei einmal gebaute Rückübersetzer: einer für reinen Text, einer für
+    // JSON-Fragmente (dort werden die Originalwerte JSON-escaped eingesetzt).
+    private readonly Func<string, string> _deanon;
+    private readonly Func<string, string> _deanonJson;
 
     private readonly StringBuilder _lineCarry = new();      // unvollständige Zeile über Chunk-Grenzen
     private readonly List<string> _eventLines = new();       // Zeilen des aktuellen Ereignisses
@@ -30,8 +32,8 @@ public sealed class SseDeanonymizer
 
     public SseDeanonymizer(IReadOnlyList<MappingEntry> mappings, AnonymizerService service)
     {
-        _mappings = mappings;
-        _service = service;
+        _deanon = service.BuildDeanonymizer(mappings);
+        _deanonJson = service.BuildDeanonymizer(mappings, AnthropicRewriter.JsonEscapeInner);
     }
 
     /// <summary>Verarbeitet ein weiteres Stück des Streams und liefert den umgeschriebenen Teil.</summary>
@@ -175,7 +177,7 @@ public sealed class SseDeanonymizer
             var current = _pendingText.GetValueOrDefault(idx, string.Empty) + (GetString(delta, "text") ?? string.Empty);
             var (emit, keep) = SplitHoldback(current);
             _pendingText[idx] = keep;
-            delta["text"] = _service.Deanonymize(emit, _mappings);
+            delta["text"] = _deanon(emit);
         }
         else if (dtype == "input_json_delta")
         {
@@ -183,7 +185,7 @@ public sealed class SseDeanonymizer
             var (emit, keep) = SplitHoldback(current);
             _pendingJson[idx] = keep;
             // Innerhalb eines JSON-Fragments müssen die Originalwerte JSON-escaped werden.
-            delta["partial_json"] = _service.Deanonymize(emit, _mappings, AnthropicRewriter.JsonEscapeInner);
+            delta["partial_json"] = _deanonJson(emit);
         }
     }
 
@@ -191,14 +193,12 @@ public sealed class SseDeanonymizer
     {
         if (_pendingText.TryGetValue(idx, out var pt) && pt.Length > 0)
         {
-            var restored = _service.Deanonymize(pt, _mappings);
-            EmitSyntheticDelta(idx, "text_delta", "text", restored, output);
+            EmitSyntheticDelta(idx, "text_delta", "text", _deanon(pt), output);
             _pendingText[idx] = string.Empty;
         }
         if (_pendingJson.TryGetValue(idx, out var pj) && pj.Length > 0)
         {
-            var restored = _service.Deanonymize(pj, _mappings, AnthropicRewriter.JsonEscapeInner);
-            EmitSyntheticDelta(idx, "input_json_delta", "partial_json", restored, output);
+            EmitSyntheticDelta(idx, "input_json_delta", "partial_json", _deanonJson(pj), output);
             _pendingJson[idx] = string.Empty;
         }
     }

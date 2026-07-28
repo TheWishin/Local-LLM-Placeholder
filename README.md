@@ -72,6 +72,13 @@ image, which you can then download. Nothing is uploaded. The OCR files (~30 MB,
 German + English) ship inside the released extension ZIP; when working from
 source, run `./scripts/fetch-ocr-assets.sh` once to add them.
 
+**📄 Anonymize PDFs:** expand *"Anonymize PDF"*, pick a PDF – the extension reads
+the text **locally** (embedded text layer via PDF.js, OCR fallback for scanned
+pages), finds the same personal data as the text engine and **blacks it out on
+every page**. You get a new redacted PDF to download; nothing is uploaded. The
+PDF.js files also ship in the released ZIP (and are added by
+`./scripts/fetch-ocr-assets.sh` when working from source).
+
 **Right-click anywhere:** select text on any web page (e.g. in a ChatGPT or
 Claude input box), right-click, and choose **"🔒 Anonymize selection (copy)"** –
 the anonymized text is put on your clipboard, ready to paste back. Later,
@@ -96,6 +103,7 @@ version history.
 | Allowed values (👁 click-to-allow) & custom terms | ✅ | ✅ |
 | Right-click context menu (anonymize/restore selection) | — | ✅ |
 | Image OCR redaction (black out PII in screenshots) | — | ✅ |
+| PDF redaction (black out PII on every page) | — | ✅ |
 | One-click installers (auto-installs Ollama) | ✅ | — |
 
 ✅ = available · — = not applicable to this edition.

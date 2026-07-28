@@ -3,6 +3,7 @@ obj/
 publish/
 publish-*/
 gateway/
+node_modules/
 *.user
 .vs/
 .idea/

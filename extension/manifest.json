@@ -3,7 +3,7 @@
     "name": "__MSG_extName__",
     "description": "__MSG_extDescription__",
     "default_locale": "en",
-    "version": "1.7.2",
+    "version": "1.8.0",
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
@@ -45,7 +45,8 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "vendor/tesseract/*"
+                "vendor/tesseract/*",
+                "vendor/pdfjs/*"
             ],
             "matches": [
                 "<all_urls>"

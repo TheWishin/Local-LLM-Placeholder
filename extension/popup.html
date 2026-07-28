@@ -100,6 +100,28 @@
         </details>
     </section>
 
+    <section id="pdfSection">
+        <details>
+            <summary id="pdfTitle"></summary>
+            <p class="muted small" id="pdfHint"></p>
+            <div id="pdfUnavailable" class="muted small hidden"></div>
+            <div id="pdfControls">
+                <input type="file" id="pdfFile" accept="application/pdf,.pdf" />
+                <div class="btn-row">
+                    <button id="pdfRunBtn" class="primary" disabled></button>
+                </div>
+                <div id="pdfProgressWrap" class="progress hidden"><div id="pdfProgressBar" class="progress-bar"></div></div>
+                <div id="pdfStatus" class="muted small"></div>
+                <div id="pdfSensitive" class="warn small hidden"></div>
+                <div id="pdfResult" class="hidden">
+                    <div class="btn-row">
+                        <button id="pdfDownloadBtn" class="ghost small-btn"></button>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </section>
+
     <section>
         <details>
             <summary id="settingsTitle"></summary>

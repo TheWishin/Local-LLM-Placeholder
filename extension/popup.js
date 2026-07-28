@@ -6,6 +6,7 @@
 import { anonymize, deanonymize, labelFor, defaultOptions } from './engine.js';
 import * as ollama from './ollama.js';
 import * as imaging from './image.js';
+import * as pdfing from './pdf.js';
 import { LANGUAGES, STRINGS, detectLanguage, format } from './i18n.js';
 
 const $ = id => document.getElementById(id);
@@ -136,6 +137,11 @@ function renderTexts() {
     $('imageUnavailable').textContent = s.imageUnavailable;
     $('imageRunBtn').textContent = s.imageRun;
     $('imageDownloadBtn').textContent = s.imageDownload;
+    $('pdfTitle').textContent = s.pdfTitle;
+    $('pdfHint').textContent = s.pdfHint;
+    $('pdfUnavailable').textContent = s.pdfUnavailable;
+    $('pdfRunBtn').textContent = s.pdfRun;
+    $('pdfDownloadBtn').textContent = s.pdfDownload;
 
     const grid = $('optionsGrid');
     grid.innerHTML = '';
@@ -663,6 +669,7 @@ async function main() {
     $('responseText').addEventListener('input', saveSession);
 
     initImage();
+    initPdf();
 
     renderTexts();
     if (state.llmEnabled) {
@@ -768,6 +775,89 @@ function downloadRedacted() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 'image/png');
+}
+
+// ---- PDF-Anonymisierung ---------------------------------------------------
+
+let redactedPdfBlob = null;
+
+async function initPdf() {
+    const available = await pdfing.isPdfAvailable();
+    if (!available) {
+        // Ohne gebündelte PDF.js-Dateien den Bereich als nicht verfügbar zeigen.
+        $('pdfUnavailable').classList.remove('hidden');
+        $('pdfControls').classList.add('hidden');
+        return;
+    }
+    $('pdfFile').addEventListener('change', () => {
+        $('pdfRunBtn').disabled = !$('pdfFile').files?.[0];
+        $('pdfResult').classList.add('hidden');
+        $('pdfStatus').textContent = '';
+        $('pdfSensitive').classList.add('hidden');
+    });
+    $('pdfRunBtn').addEventListener('click', runPdfRedaction);
+    $('pdfDownloadBtn').addEventListener('click', downloadRedactedPdf);
+}
+
+async function runPdfRedaction() {
+    const file = $('pdfFile').files?.[0];
+    if (!file) {
+        return;
+    }
+    const s = t();
+    $('pdfRunBtn').disabled = true;
+    $('pdfResult').classList.add('hidden');
+    $('pdfSensitive').classList.add('hidden');
+    $('pdfProgressWrap').classList.remove('hidden');
+    $('pdfProgressBar').style.width = '5%';
+    $('pdfStatus').textContent = format(s.pdfReading, 0);
+
+    try {
+        const options = {
+            ...state.options,
+            language: state.lang,
+            customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean),
+            allowedTerms: allowedTermsList()
+        };
+        const langs = ocrLangsFor(state.lang);
+        const result = await pdfing.redactPdf(file, options, langs, pc => {
+            $('pdfProgressBar').style.width = `${pc}%`;
+            $('pdfStatus').textContent = format(s.pdfReading, pc);
+        });
+
+        redactedPdfBlob = result.blob;
+        $('pdfProgressWrap').classList.add('hidden');
+        $('pdfStatus').textContent = result.mappings.length > 0
+            ? format(s.pdfDone, result.pageCount, result.mappings.length)
+            : s.pdfNone;
+        $('pdfDownloadBtn').textContent = s.pdfDownload;
+        $('pdfResult').classList.remove('hidden');
+
+        if (result.sensitiveCount > 0) {
+            $('pdfSensitive').textContent = format(s.sensitiveWarning, result.sensitiveCount);
+            $('pdfSensitive').classList.remove('hidden');
+        }
+    } catch (e) {
+        $('pdfProgressWrap').classList.add('hidden');
+        $('pdfStatus').textContent = s.pdfError;
+    } finally {
+        $('pdfRunBtn').disabled = false;
+    }
+}
+
+function downloadRedactedPdf() {
+    if (!redactedPdfBlob) {
+        return;
+    }
+    const url = URL.createObjectURL(redactedPdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    a.download = `redacted-${stamp}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 main();

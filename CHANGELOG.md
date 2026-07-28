@@ -9,6 +9,24 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-28
+
+### Added
+- **PDF-Anonymisierung in der Erweiterung.** Ein PDF auswählen – die Erweiterung
+  liest den Text **lokal** (eingebettete Textebene via PDF.js, OCR nur für
+  gescannte Seiten), erkennt dieselben persönlichen Daten wie beim Text und
+  **schwärzt** sie auf jeder Seite. Heraus kommt ein neues, geschwärztes PDF zum
+  Herunterladen. Nichts wird hochgeladen; die PDF.js-Bausteine liegen im Release
+  bei (beim Arbeiten aus dem Quellcode `scripts/fetch-ocr-assets.sh` einmal
+  ausführen).
+
+### Performance
+- **Schnellere Rückübersetzung.** Die De-Anonymisierung baut jetzt einmal eine
+  Nachschlagetabelle und ersetzt in **einem** Durchgang, statt pro Platzhalter ein
+  eigenes Regex zu kompilieren (vorher O(Text × Platzhalter), jetzt O(Text)).
+  Spürbar vor allem im API-Gateway, das viele Felder einer Antwort zurückübersetzt
+  – sowohl im C#- als auch im JavaScript-Motor.
+
 ## [1.7.2] - 2026-07-27
 
 ### Changed
@@ -167,7 +185,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.7.2...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.0
 [1.7.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.2
 [1.7.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.1
 [1.7.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.0
