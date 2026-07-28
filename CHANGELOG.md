@@ -9,6 +9,16 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-07-28
+
+### Performance
+- **Gateway streamt sofort.** Die Antwort-Pufferung ist im Streaming abgeschaltet
+  (`DisableBuffering`), damit jedes Token unmittelbar beim Client ankommt, statt
+  bis zu einer Puffergrösse zu warten – die KI-Ausgabe erscheint Wort für Wort.
+- **Modell bleibt warm.** Die lokale KI-Erkennung hält das Modell nach einer
+  Analyse 30 Minuten im Speicher (`keep_alive`); die nächste Erkennung startet
+  ohne Kaltstart und liefert schneller. Gilt für App, Erweiterung und Gateway.
+
 ## [1.8.0] - 2026-07-28
 
 ### Added
@@ -192,7 +202,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.8.1...HEAD
+[1.8.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.1
 [1.8.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.0
 [1.7.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.2
 [1.7.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.1

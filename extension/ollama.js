@@ -92,6 +92,9 @@ export async function detectPii(text, model, endpoint = DEFAULT_ENDPOINT) {
             model,
             stream: false,
             format: 'json',
+            // Modell nach der Analyse im Speicher halten – die nächste Anfrage
+            // startet dann ohne Kaltstart und liefert schneller.
+            keep_alive: '30m',
             options: { temperature: 0 },
             messages: [
                 { role: 'system', content: SYSTEM_PROMPT },

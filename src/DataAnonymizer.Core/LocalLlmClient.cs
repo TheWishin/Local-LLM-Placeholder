@@ -190,6 +190,9 @@ public sealed class LocalLlmClient : IDisposable
             model = string.IsNullOrWhiteSpace(model) ? _options.Model : model,
             stream = false,
             format = "json",
+            // Modell nach der Analyse im Speicher halten – die nächste Anfrage
+            // startet dann ohne Kaltstart und liefert schneller.
+            keep_alive = "30m",
             options = new { temperature = 0 },
             messages = new object[]
             {
