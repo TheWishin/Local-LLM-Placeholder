@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.Http.Features;
 using DataAnonymizer.Services;
 
 namespace DataAnonymizer.Proxy;
@@ -116,6 +117,10 @@ public sealed class AnthropicForwarder
 
     private async Task StreamBackAsync(HttpResponseMessage upstreamResponse, HttpContext context, IReadOnlyList<MappingEntry> mappings, CancellationToken ct)
     {
+        // Response-Pufferung abschalten: jedes Token soll sofort beim Client
+        // ankommen (echtes Streaming), statt bis zu einer Puffergrösse zu warten.
+        context.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
         var sse = new SseDeanonymizer(mappings, _service);
         await using var upstreamStream = await upstreamResponse.Content.ReadAsStreamAsync(ct);
         using var reader = new StreamReader(upstreamStream, Encoding.UTF8);
