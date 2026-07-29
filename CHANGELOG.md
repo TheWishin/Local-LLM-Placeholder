@@ -9,6 +9,29 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-07-29
+
+### Performance
+- **Native Apple-Silicon-Optimierung (MacBook M-Serie, z.B. M5 Pro).** Die
+  Desktop-App und das Gateway werden jetzt mit **ReadyToRun** gebaut: der Code
+  ist vorab in nativen Maschinencode kompiliert → **spürbar schnellerer Start**.
+  Das `osx-arm64`-Paket läuft nativ auf Apple Silicon (kein Rosetta). ReadyToRun
+  gilt für alle Plattformen.
+
+### Fixed / macOS
+- **Weniger Gatekeeper-Hürden auf dem Mac.** Der macOS-Starter entfernt das
+  Quarantäne-Flag jetzt rekursiv vom ganzen Ordner (App **und** mitgelieferte
+  Bibliotheken) – auf Apple Silicon werden unsignierte, quarantänierte Binaries
+  sonst hart blockiert.
+- **Architektur-Hinweis:** Startet man versehentlich die Intel-Version auf einem
+  Apple-Silicon-Mac (läuft nur langsam über Rosetta), weist der Starter jetzt
+  darauf hin, das native `osx-arm64`-Paket zu verwenden. START-HERE erklärt,
+  welches Paket man braucht (Apple Silicon → `osx-arm64`, Intel → `osx-x64`).
+
+### Note
+- Das lokale KI-Modell (Ollama) nutzt auf Apple Silicon automatisch die
+  Metal-GPU – dafür ist keine Einstellung nötig.
+
 ## [1.8.1] - 2026-07-28
 
 ### Performance
@@ -202,7 +225,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.8.1...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.8.2...HEAD
+[1.8.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.2
 [1.8.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.1
 [1.8.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.0
 [1.7.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.7.2

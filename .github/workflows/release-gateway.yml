@@ -54,7 +54,8 @@ jobs:
       - name: App publizieren (alle Plattformen)
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
-            dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
+            # ReadyToRun: nativer Code vorab, schnellerer Start (u.a. Apple Silicon).
+            dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true -o "publish/$rid"
             case "$rid" in
               win-x64)
                 cp installers/Install-Windows.bat "publish/$rid/"
@@ -74,7 +75,7 @@ jobs:
       - name: Gateway publizieren (alle Plattformen)
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
-            dotnet publish src/DataAnonymizer.Proxy -c Release -r "$rid" --self-contained -o "gateway/$rid"
+            dotnet publish src/DataAnonymizer.Proxy -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true -o "gateway/$rid"
             cp installers/GATEWAY-README.txt "gateway/$rid/README.txt"
             case "$rid" in
               win-x64)
