@@ -67,17 +67,25 @@ AI tool → 3 Translate back). Everything runs 100% locally; the optional AI
 
 **🖼️ Anonymize images (OCR):** open the extension, expand *"Anonymize image
 (OCR)"*, pick a screenshot or scan – the extension reads the text **locally**
-(Tesseract.js, bundled), finds the personal data and **blacks it out** in the
-image, which you can then download. Nothing is uploaded. The OCR files (~30 MB,
+(Tesseract.js, bundled), finds the personal data and replaces it in the image.
+You choose what goes there: **placeholders** (`[NAME_1]` written legibly into
+the image, so the round trip still works) or a **blackout** (permanent). The
+result is yours to download. Nothing is uploaded. The OCR files (~30 MB,
 German + English) ship inside the released extension ZIP; when working from
 source, run `./scripts/fetch-ocr-assets.sh` once to add them.
 
 **📄 Anonymize PDFs:** expand *"Anonymize PDF"*, pick a PDF – the extension reads
 the text **locally** (embedded text layer via PDF.js, OCR fallback for scanned
-pages), finds the same personal data as the text engine and **blacks it out on
-every page**. You get a new redacted PDF to download; nothing is uploaded. The
-PDF.js files also ship in the released ZIP (and are added by
-`./scripts/fetch-ocr-assets.sh` when working from source).
+pages), finds the same personal data as the text engine and replaces it **on
+every page** (placeholder or blackout, your choice). You get a new PDF to
+download; nothing is uploaded. The PDF.js files also ship in the released ZIP
+(and are added by `./scripts/fetch-ocr-assets.sh` when working from source).
+
+> **One mapping for everything.** Findings from text, images and PDFs share a
+> single mapping table, and numbering continues across pages and documents — the
+> same person always gets the same placeholder, and two different people never
+> collide. That means **export/import (JSON)**, **restore** and the **allowed
+> values** (👁) work for images and PDFs exactly as they do for text.
 
 **Right-click anywhere:** select text on any web page (e.g. in a ChatGPT or
 Claude input box), right-click, and choose **"🔒 Anonymize selection (copy)"** –
@@ -99,11 +107,11 @@ version history.
 | 4 UI languages (DE / EN / FR / IT) | ✅ | ✅ |
 | Local-LLM (Ollama) detection, zero-config | ✅ | ✅ |
 | Special-category (revDSG) data detection | ✅ | ✅ |
-| Persistent mapping + export / import (JSON) | ✅ | ✅ |
+| Persistent mapping + export / import (JSON, incl. image & PDF) | ✅ | ✅ |
 | Allowed values (👁 click-to-allow) & custom terms | ✅ | ✅ |
 | Right-click context menu (anonymize/restore selection) | — | ✅ |
-| Image OCR redaction (black out PII in screenshots) | — | ✅ |
-| PDF redaction (black out PII on every page) | — | ✅ |
+| Image placeholders / redaction (screenshots, scans) | — | ✅ |
+| PDF placeholders / redaction (every page) | — | ✅ |
 | One-click installers (auto-installs Ollama) | ✅ | — |
 
 ✅ = available · — = not applicable to this edition.

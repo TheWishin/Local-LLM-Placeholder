@@ -9,6 +9,31 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-29
+
+### Added
+- **Platzhalter in Bildern und PDFs (nicht mehr nur Schwärzen).** Bild oder PDF
+  auswählen und im neuen Auswahlfeld entscheiden:
+  - **Platzhalter einsetzen** – die Fundstelle wird durch ihren Platzhalter
+    ersetzt (`[NAME_1]`, gut lesbar ins Bild/PDF geschrieben). Damit funktioniert
+    der **komplette Rundlauf** auch für Bilder und PDFs: an die KI geben,
+    Antwort zurückkopieren, Originalwerte wieder einsetzen.
+  - **Schwärzen** – wie bisher, endgültig unkenntlich.
+- **Gemeinsame Zuordnungstabelle für Text, Bild und PDF.** Funde aus Bildern und
+  PDFs landen jetzt in derselben Tabelle wie Text-Funde. Dadurch greifen
+  **Export/Import (JSON)**, die **Rückübersetzung** und die **erlaubten Werte**
+  (👁) endlich auch für Bilder und PDFs.
+- **Durchgehende Nummerierung.** Derselbe Wert bekommt überall denselben
+  Platzhalter – über Seiten, Dokumente und Text hinweg. Umgekehrt bekommen
+  verschiedene Personen nie denselben Platzhalter (vorher konnte Seite 2 ein
+  zweites `[NAME_1]` vergeben, was die Rückübersetzung mehrdeutig machte).
+- **Anonymisierter Text aus Bild/PDF**: der erkannte Inhalt wird zusätzlich als
+  Text mit Platzhaltern bereitgestellt.
+
+### Fixed
+- Zusammenhängende Wörter eines Treffers (z.B. Vor- **und** Nachname) werden zu
+  einem Kästchen zusammengefasst – der Platzhalter steht einmal statt doppelt.
+
 ## [1.8.2] - 2026-07-29
 
 ### Performance
@@ -225,7 +250,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.8.2...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.0
 [1.8.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.2
 [1.8.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.1
 [1.8.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.0

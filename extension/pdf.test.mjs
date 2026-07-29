@@ -2,6 +2,8 @@
 // Ausführen: node extension/pdf.test.mjs
 
 import { mat3, pdfItemsToWords, imagesToPdf } from './pdf.js';
+import { planImageRedaction } from './image.js';
+import { defaultOptions } from './engine.js';
 
 let failures = 0;
 function check(name, ok) {
@@ -62,6 +64,37 @@ if (sx) {
 // Einzelseite
 const one = imagesToPdf([{ jpeg: jpegB, width: 10, height: 10 }]);
 check('imagesToPdf: Einzelseite hat Count 1', Buffer.from(one).toString('latin1').includes('/Count 1'));
+
+// --- Platzhalter-Durchgängigkeit über Seiten hinweg -----------------------
+// redactPdf braucht einen Browser; die entscheidende Logik (fortlaufende
+// Zuordnung) ist die von planImageRedaction + existingMappings. Hier wird
+// geprüft, dass eine "Seite 2" nicht denselben Platzhalter neu vergibt.
+{
+    const page1Words = [
+        { text: 'Herr',   bbox: { x0: 0,  y0: 0, x1: 40,  y1: 20 } },
+        { text: 'Max',    bbox: { x0: 50, y0: 0, x1: 90,  y1: 20 } },
+        { text: 'Muster', bbox: { x0: 100, y0: 0, x1: 160, y1: 20 } }
+    ];
+    const page2Words = [
+        { text: 'Frau',  bbox: { x0: 0,  y0: 0, x1: 40, y1: 20 } },
+        { text: 'Anna',  bbox: { x0: 50, y0: 0, x1: 95, y1: 20 } },
+        { text: 'Meier', bbox: { x0: 105, y0: 0, x1: 160, y1: 20 } }
+    ];
+    const opts = { ...defaultOptions(), language: 'en' };
+
+    const p1 = planImageRedaction(page1Words, opts);
+    const p2 = planImageRedaction(page2Words, { ...opts, existingMappings: p1.mappings });
+
+    const ph1 = p1.boxes[0].placeholder;
+    const ph2 = p2.boxes[0].placeholder;
+    check('PDF: Seite 1 bekommt [NAME_1]', ph1 === '[NAME_1]');
+    check('PDF: Seite 2 bekommt einen ANDEREN Platzhalter', ph2 !== ph1);
+    check('PDF: Seite 2 zaehlt weiter ([NAME_2])', ph2 === '[NAME_2]');
+
+    // Derselbe Mensch auf beiden Seiten -> derselbe Platzhalter.
+    const p2same = planImageRedaction(page1Words, { ...opts, existingMappings: p1.mappings });
+    check('PDF: gleiche Person behaelt ihren Platzhalter', p2same.boxes[0].placeholder === ph1);
+}
 
 console.log();
 console.log(failures === 0 ? 'ALLE PDF-TESTS BESTANDEN' : `${failures} PDF-TEST(S) FEHLGESCHLAGEN`);

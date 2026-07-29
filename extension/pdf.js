@@ -6,7 +6,7 @@
 // Reine, testbare Logik (Node-Tests): mat3, pdfItemsToWords, imagesToPdf.
 // Das Rendern und die OCR brauchen den Browser.
 
-import { planImageRedaction, drawRedacted, ocrWords } from './image.js';
+import { planImageRedaction, drawAnonymized, ocrWords } from './image.js';
 
 /** URL einer gebündelten PDF.js-Datei. */
 function vendorPdf(path) {
@@ -195,22 +195,39 @@ function canvasToJpeg(canvas, quality = 0.85) {
 }
 
 /**
- * Anonymisiert ein ganzes PDF: erkennt persönliche Daten, schwärzt sie auf jeder
- * Seite und liefert ein neues, geschwärztes PDF als Blob.
+ * Anonymisiert ein ganzes PDF: erkennt persönliche Daten, ersetzt sie auf jeder
+ * Seite (Platzhalter oder Schwärzung) und liefert ein neues PDF als Blob.
+ *
+ * Die Zuordnungstabelle läuft über ALLE Seiten hinweg weiter (und optional ab
+ * einer bereits bestehenden Tabelle): derselbe Wert bekommt auf Seite 5 denselben
+ * Platzhalter wie auf Seite 1 – sonst wäre die Rückübersetzung mehrdeutig.
+ *
  * @param {Blob|File} file
  * @param {object} options   Erkennungsoptionen (engine.defaultOptions)
  * @param {string} langs     OCR-Sprachen für gescannte Seiten, z.B. "deu+eng"
  * @param {(pct:number)=>void} onProgress
+ * @param {{mode?:'placeholder'|'blackout', existingMappings?:object[]}} extra
  */
-export async function redactPdf(file, options, langs = 'deu+eng', onProgress = null) {
+export async function redactPdf(file, options, langs = 'deu+eng', onProgress = null, extra = {}) {
+    const mode = extra.mode ?? 'placeholder';
     const pdfjs = await loadPdfjs();
     const data = new Uint8Array(await file.arrayBuffer());
     const doc = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
 
-    const scale = 2;                 // gute Auflösung für die Schwärzung
+    const scale = 2;                 // gute Auflösung für Schrift und Schwärzung
     const pages = [];
     const mappings = [];
+    const byPlaceholder = new Map();
+    // Startpunkt: bereits vergebene Zuordnungen (z.B. aus Text oder einem
+    // vorherigen Dokument) – damit nichts doppelt vergeben wird.
+    for (const m of extra.existingMappings ?? []) {
+        if (m && typeof m.placeholder === 'string') {
+            byPlaceholder.set(m.placeholder, m);
+        }
+    }
+    const seen = () => Array.from(byPlaceholder.values());
     let sensitiveCount = 0;
+    const textPerPage = [];
 
     for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
@@ -229,15 +246,19 @@ export async function redactPdf(file, options, langs = 'deu+eng', onProgress = n
             words = await ocrWords(canvas, langs);
         }
 
-        const plan = planImageRedaction(words, options, null);
-        const redacted = drawRedacted(canvas, plan.boxes, 2);
-        const jpeg = await canvasToJpeg(redacted);
-        pages.push({ jpeg, width: redacted.width, height: redacted.height });
+        const plan = planImageRedaction(words, { ...options, existingMappings: seen() }, null);
+        const out = drawAnonymized(canvas, plan.boxes, { mode, pad: 2 });
+        const jpeg = await canvasToJpeg(out);
+        pages.push({ jpeg, width: out.width, height: out.height });
+        textPerPage.push(plan.anonymizedText ?? '');
 
         for (const m of plan.mappings) {
-            mappings.push(m);
-            if (m.category === 'sensitive') {
-                sensitiveCount++;
+            if (!byPlaceholder.has(m.placeholder)) {
+                byPlaceholder.set(m.placeholder, m);
+                mappings.push(m);
+                if (m.category === 'sensitive') {
+                    sensitiveCount++;
+                }
             }
         }
         onProgress?.(Math.round((i / doc.numPages) * 100));
@@ -248,6 +269,7 @@ export async function redactPdf(file, options, langs = 'deu+eng', onProgress = n
         blob: new Blob([pdfBytes], { type: 'application/pdf' }),
         mappings,
         pageCount: doc.numPages,
-        sensitiveCount
+        sensitiveCount,
+        anonymizedText: textPerPage.join('\n\n')
     };
 }

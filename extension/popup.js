@@ -142,6 +142,14 @@ function renderTexts() {
     $('pdfUnavailable').textContent = s.pdfUnavailable;
     $('pdfRunBtn').textContent = s.pdfRun;
     $('pdfDownloadBtn').textContent = s.pdfDownload;
+    // Modus-Auswahl (Platzhalter vs. Schwärzen) für Bild und PDF.
+    for (const id of ['imageMode', 'pdfMode']) {
+        const sel = $(id);
+        sel.options[0].textContent = s.modePlaceholder;
+        sel.options[1].textContent = s.modeBlackout;
+    }
+    $('imageModeLabel').textContent = s.modeLabel;
+    $('pdfModeLabel').textContent = s.modeLabel;
 
     const grid = $('optionsGrid');
     grid.innerHTML = '';
@@ -693,6 +701,40 @@ async function main() {
     }
 }
 
+// ---- Gemeinsame Zuordnungstabelle -----------------------------------------
+
+/**
+ * Nimmt neue Zuordnungen (aus Bild oder PDF) in die gemeinsame Tabelle auf.
+ * Dadurch greifen Export/Import und "Original wiederherstellen" auch für
+ * Bilder und PDFs. Bereits vorhandene Platzhalter bleiben unverändert.
+ */
+function mergeMappings(newMappings) {
+    const known = new Set(state.mappings.map(m => m.placeholder));
+    let added = 0;
+    for (const m of newMappings ?? []) {
+        if (!m || typeof m.placeholder !== 'string' || known.has(m.placeholder)) {
+            continue;
+        }
+        known.add(m.placeholder);
+        state.mappings.push({ placeholder: m.placeholder, original: m.original, category: m.category ?? 'term' });
+        added++;
+    }
+    if (added > 0) {
+        saveMappings();
+        renderMappingTable();
+        renderCatSummary();
+        renderSensitiveWarning();
+        renderChips();
+        // Ergebnis-/Rückübersetzungs-Bereich freischalten, damit die Werte
+        // exportiert und Antworten zurückübersetzt werden können.
+        $('outputSection').classList.remove('hidden');
+        $('deanonSection').classList.remove('hidden');
+        $('mappingLoadedNote').textContent = format(t().mappingLoaded, state.mappings.length);
+        $('mappingLoadedNote').classList.remove('hidden');
+    }
+    return added;
+}
+
 // ---- Bild-Anonymisierung (OCR) --------------------------------------------
 
 let redactedCanvas = null;
@@ -741,10 +783,16 @@ async function runImageRedaction() {
             ...state.options,
             language: state.lang,
             customTerms: state.customTermsText.split('\n').map(x => x.trim()).filter(Boolean),
-            allowedTerms: allowedTermsList()
+            allowedTerms: allowedTermsList(),
+            // Nummerierung an der bestehenden Tabelle fortsetzen (Text/PDF/Bild teilen sie).
+            existingMappings: state.mappings
         };
         const plan = imaging.planImageRedaction(words, options);
-        redactedCanvas = imaging.drawRedacted(bitmap, plan.boxes);
+        const mode = $('imageMode').value === 'blackout' ? 'blackout' : 'placeholder';
+        redactedCanvas = imaging.drawAnonymized(bitmap, plan.boxes, { mode });
+
+        // Funde in die gemeinsame Tabelle übernehmen → Export/Import + Rückübersetzung.
+        mergeMappings(plan.mappings);
 
         const preview = $('imageCanvas');
         preview.width = redactedCanvas.width;
@@ -836,12 +884,15 @@ async function runPdfRedaction() {
             allowedTerms: allowedTermsList()
         };
         const langs = ocrLangsFor(state.lang);
+        const mode = $('pdfMode').value === 'blackout' ? 'blackout' : 'placeholder';
         const result = await pdfing.redactPdf(file, options, langs, pc => {
             $('pdfProgressBar').style.width = `${pc}%`;
             $('pdfStatus').textContent = format(s.pdfReading, pc);
-        });
+        }, { mode, existingMappings: state.mappings });
 
         redactedPdfBlob = result.blob;
+        // Funde in die gemeinsame Tabelle übernehmen → Export/Import + Rückübersetzung.
+        mergeMappings(result.mappings);
         $('pdfProgressWrap').classList.add('hidden');
         $('pdfStatus').textContent = result.mappings.length > 0
             ? format(s.pdfDone, result.pageCount, result.mappings.length)
