@@ -54,6 +54,12 @@ export function mat3(m1, m2) {
 }
 
 /**
+ * Anteil der Schriftgrösse, den Unterlängen (p, g, y, @) unter die Grundlinie
+ * reichen. Grosszügig gewählt – lieber etwas zu viel überdecken als zu wenig.
+ */
+const DESCENDER_RATIO = 0.28;
+
+/**
  * Wandelt PDF.js-Textelemente (mit Position im PDF-Raum) in Wort-Objekte mit
  * Pixel-Bounding-Box um – so, wie sie planImageRedaction (aus image.js) erwartet.
  * @param {{str:string, transform:number[], width:number}[]} items
@@ -72,13 +78,17 @@ export function pdfItemsToWords(items, viewportTransform, scale = 1) {
         const widthPx = (item.width || 0) * scale;
         const x0 = tx[4];
         const baseline = tx[5];                              // Pixel-y der Grundlinie
+        // Wichtig: Unterlängen (p, g, y, @, …) reichen UNTER die Grundlinie.
+        // Ohne diesen Zuschlag bliebe der untere Rand des Originaltexts sichtbar –
+        // beim Schwärzen wie beim Überdecken mit einem Platzhalter ein Datenleck.
+        const descender = fontHeight * DESCENDER_RATIO;
         words.push({
             text: str,
             bbox: {
                 x0,
                 y0: baseline - fontHeight,                   // Oberkante
                 x1: x0 + widthPx,
-                y1: baseline                                 // Unterkante
+                y1: baseline + descender                     // Unterkante inkl. Unterlängen
             }
         });
     }

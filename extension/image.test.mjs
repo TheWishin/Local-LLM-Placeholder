@@ -2,7 +2,7 @@
 // OCR nötig – wir füttern synthetische OCR-Wörter mit Positionen.
 // Ausführen: node extension/image.test.mjs
 
-import { planImageRedaction, parseTsvWords, layoutPlaceholderBox } from './image.js';
+import { planImageRedaction, parseTsvWords, layoutPlaceholderBox, sameLine } from './image.js';
 import { defaultOptions } from './engine.js';
 
 let failures = 0;
@@ -113,6 +113,30 @@ check('TSV: leere Eingabe -> keine Wörter', parseTsvWords('').length === 0);
     // Am rechten Rand darf nicht ueber die Leinwand hinausgezeichnet werden.
     const edge = layoutPlaceholderBox({ x0: 480, y0: 0, x1: 495, y1: 20 }, '[EMAIL_3]', measure, 500);
     check('Layout: rechter Rand wird eingehalten', edge.x1 <= 500);
+}
+
+// ---- Zeilenerkennung: Erkennung darf nicht ueber das Zeilenende laufen ----
+{
+    check('sameLine: gleiche Zeile', sameLine({x0:0,y0:10,x1:10,y1:30}, {x0:20,y0:11,x1:30,y1:31}));
+    check('sameLine: naechste Zeile', !sameLine({x0:0,y0:10,x1:10,y1:30}, {x0:0,y0:45,x1:10,y1:65}));
+    check('sameLine: ohne Position -> wie bisher', sameLine(null, {x0:0,y0:0,x1:1,y1:1}));
+
+    // "Frau Anna Meier" (Zeile 1) + "Kunde: Max Muster" (Zeile 2):
+    // der Name darf NICHT "Anna Meier Kunde" werden.
+    const two = [
+        { text:'Frau',   bbox:{x0:0,   y0:0,  x1:40,  y1:20} },
+        { text:'Anna',   bbox:{x0:50,  y0:0,  x1:95,  y1:20} },
+        { text:'Meier',  bbox:{x0:105, y0:0,  x1:160, y1:20} },
+        { text:'Kunde:', bbox:{x0:0,   y0:40, x1:60,  y1:60} },
+        { text:'Max',    bbox:{x0:70,  y0:40, x1:110, y1:60} },
+        { text:'Muster', bbox:{x0:120, y0:40, x1:180, y1:60} }
+    ];
+    const plan = planImageRedaction(two, { ...defaultOptions(), language: 'en' });
+    const names = plan.mappings.filter(m => m.category === 'name').map(m => m.original);
+    check('Zeilen: Name endet am Zeilenende', names.includes('Anna Meier'));
+    check('Zeilen: kein Ueberlauf ("Anna Meier Kunde")', !names.some(n => n.includes('Kunde')));
+    check('Zeilen: zweiter Name eigenstaendig erkannt', names.includes('Max Muster'));
+    check('Zeilen: Text enthaelt Zeilenumbruch', plan.text.includes('\n'));
 }
 
 console.log();
