@@ -50,7 +50,9 @@ jobs:
       - name: Publish (alle Plattformen)
         run: |
           for rid in win-x64 linux-x64 osx-x64 osx-arm64; do
-            dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -o "publish/$rid"
+            # ReadyToRun: IL wird vorab in nativen Code kompiliert – schnellerer
+            # Start, u.a. nativ für Apple Silicon (osx-arm64, z.B. MacBook M-Serie).
+            dotnet publish src/DataAnonymizer -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true -o "publish/$rid"
             # Passenden One-Click-Installer + START-HERE beilegen, damit die
             # Empfänger nur eine Datei anklicken müssen (Ollama installiert sich selbst).
             case "$rid" in

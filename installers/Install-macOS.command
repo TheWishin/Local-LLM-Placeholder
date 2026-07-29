@@ -42,12 +42,24 @@ else
     echo "[!!] Ollama is not available - the app still works with pattern detection only."
 fi
 
-# --- 3. Start the app ----------------------------------------------------
+# --- 3. Architecture check (Apple Silicon vs Intel) ----------------------
+ARCH="$(uname -m)"
+if [ "$ARCH" = "arm64" ] && file ./DataAnonymizer 2>/dev/null | grep -q "x86_64"; then
+    echo ""
+    echo "[!!] This is the Intel build (x86_64), but your Mac is Apple Silicon ($ARCH)."
+    echo "     It would only run slowly via Rosetta. For best speed on an M-series"
+    echo "     MacBook (M1-M5), download the 'osx-arm64' package instead (native)."
+    echo ""
+fi
+
+# --- 4. Start the app ----------------------------------------------------
 echo ""
 echo "[OK] Launching Data Anonymizer. Your browser will open at http://localhost:5100"
 echo "     Keep this window open while you use the app. Close it (Ctrl+C) to stop."
 echo ""
 chmod +x ./DataAnonymizer 2>/dev/null
-# Remove the quarantine flag so the unsigned binary can run.
-xattr -d com.apple.quarantine ./DataAnonymizer 2>/dev/null
+# Remove the quarantine flag from the whole folder so the unsigned app AND all
+# its bundled libraries can run. Gatekeeper is stricter on Apple Silicon: a
+# quarantined, unsigned binary is killed outright, so clear it recursively.
+xattr -dr com.apple.quarantine "$(pwd)" 2>/dev/null
 ./DataAnonymizer

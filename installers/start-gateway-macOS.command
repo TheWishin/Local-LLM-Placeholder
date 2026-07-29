@@ -6,6 +6,15 @@
 cd "$(dirname "$0")" || exit 1
 chmod +x ./DataAnonymizer.Proxy 2>/dev/null
 
+# Gatekeeper: das unsignierte Binary + Bibliotheken freigeben (streng auf Apple Silicon).
+xattr -dr com.apple.quarantine "$(pwd)" 2>/dev/null
+
+# Hinweis, falls die Intel-Version auf Apple Silicon läuft (langsam über Rosetta).
+if [ "$(uname -m)" = "arm64" ] && file ./DataAnonymizer.Proxy 2>/dev/null | grep -q "x86_64"; then
+    echo "[!!] Intel-Build auf Apple Silicon erkannt – fuer volle Geschwindigkeit das"
+    echo "     'osx-arm64'-Paket verwenden (nativ fuer M-Serie)."
+fi
+
 # Ziel-Server (echter KI-Server). In der Regel unveraendert lassen.
 export ANONYMIZER_UPSTREAM="${ANONYMIZER_UPSTREAM:-https://api.anthropic.com}"
 

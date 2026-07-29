@@ -2,6 +2,14 @@
   Data Anonymizer  -  START HERE (macOS)
 ========================================================
 
+Which file do I need?
+---------------------
+- Apple Silicon Mac (M1, M2, M3, M4, M5 - e.g. MacBook Pro M-series):
+      download the  ...-osx-arm64.zip  package  (native, fastest).
+- Older Intel Mac:
+      download the  ...-osx-x64.zip  package.
+Not sure? Apple menu -> About This Mac. "Chip: Apple ..." = Apple Silicon.
+
 The easy way (recommended)
 --------------------------
 1. Double-click:  Install-macOS.command
