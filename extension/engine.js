@@ -186,9 +186,36 @@ const NOT_A_NAME_WORDS = new Set([
 // ---- Öffentliche API ------------------------------------------------------
 
 /**
+ * Übernimmt eine bestehende Zuordnungstabelle als Startpunkt: derselbe Wert
+ * bekommt wieder denselben Platzhalter, und die Nummerierung läuft weiter
+ * (kein [NAME_1] zweimal für verschiedene Personen). Das hält Text, Bild und
+ * PDF in EINER gemeinsamen Tabelle zusammen.
+ */
+function seedFromExisting(existing, placeholderByValue, counters) {
+    for (const m of existing ?? []) {
+        if (!m || typeof m.placeholder !== 'string' || typeof m.original !== 'string') {
+            continue;
+        }
+        const category = m.category ?? 'term';
+        placeholderByValue.set(category + '\u0000' + normalize(m.original), m.placeholder);
+        const found = /_(\d+)\]\s*$/.exec(m.placeholder);
+        if (found) {
+            const n = Number(found[1]);
+            if (Number.isFinite(n)) {
+                counters.set(category, Math.max(counters.get(category) ?? 0, n));
+            }
+        }
+    }
+}
+
+/**
  * Anonymisiert den Text. options siehe defaultOptions(); llmFindings ist eine
  * optionale Liste { text, category } vom lokalen LLM. Bei Überschneidungen
  * gewinnen die präziseren Regex-Treffer.
+ *
+ * options.existingMappings (optional): bereits vergebene Zuordnungen. Gleiche
+ * Werte behalten ihren Platzhalter, neue zählen weiter – so passen Text-, Bild-
+ * und PDF-Ergebnisse in eine gemeinsame Tabelle.
  */
 export function anonymize(text, options, llmFindings = null) {
     if (!text) {
@@ -210,7 +237,10 @@ export function anonymize(text, options, llmFindings = null) {
     const labels = LABELS[options.language] ?? LABELS.de;
     const placeholderByValue = new Map();
     const counters = new Map();
+    seedFromExisting(options.existingMappings, placeholderByValue, counters);
+
     const mappings = [];
+    const emitted = new Set();
 
     let out = '';
     let pos = 0;
@@ -222,6 +252,11 @@ export function anonymize(text, options, llmFindings = null) {
             counters.set(c.category, n);
             placeholder = `[${labels[c.category]}_${n}]`;
             placeholderByValue.set(key, placeholder);
+        }
+        // Jede in DIESEM Durchgang genutzte Zuordnung einmal zurueckgeben – auch
+        // wiederverwendete, damit der Aufrufer die passende Tabelle bekommt.
+        if (!emitted.has(placeholder)) {
+            emitted.add(placeholder);
             mappings.push({ placeholder, original: c.original, category: c.category });
         }
         out += text.slice(pos, c.start) + placeholder;

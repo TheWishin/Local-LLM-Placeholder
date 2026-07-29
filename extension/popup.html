@@ -84,6 +84,11 @@
             <div id="imageUnavailable" class="muted small hidden"></div>
             <div id="imageControls">
                 <input type="file" id="imageFile" accept="image/*" />
+                <label class="section-label" id="imageModeLabel" for="imageMode"></label>
+                <select id="imageMode">
+                    <option value="placeholder"></option>
+                    <option value="blackout"></option>
+                </select>
                 <div class="btn-row">
                     <button id="imageRunBtn" class="primary" disabled></button>
                 </div>
@@ -107,6 +112,11 @@
             <div id="pdfUnavailable" class="muted small hidden"></div>
             <div id="pdfControls">
                 <input type="file" id="pdfFile" accept="application/pdf,.pdf" />
+                <label class="section-label" id="pdfModeLabel" for="pdfMode"></label>
+                <select id="pdfMode">
+                    <option value="placeholder"></option>
+                    <option value="blackout"></option>
+                </select>
                 <div class="btn-row">
                     <button id="pdfRunBtn" class="primary" disabled></button>
                 </div>
