@@ -86,6 +86,10 @@ download; nothing is uploaded. The PDF.js files also ship in the released ZIP
 > same person always gets the same placeholder, and two different people never
 > collide. That means **export/import (JSON)**, **restore** and the **allowed
 > values** (👁) work for images and PDFs exactly as they do for text.
+>
+> You also get the **extracted text with placeholders** in the output box –
+> that is what you paste into the AI, while the redacted image/PDF is there
+> for sharing or archiving.
 
 **Right-click anywhere:** select text on any web page (e.g. in a ChatGPT or
 Claude input box), right-click, and choose **"🔒 Anonymize selection (copy)"** –

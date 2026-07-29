@@ -735,6 +735,21 @@ function mergeMappings(newMappings) {
     return added;
 }
 
+/**
+ * Zeigt den aus Bild/PDF gelesenen Text MIT Platzhaltern im Ausgabefeld an.
+ * Das ist der eigentliche Arbeitsablauf: den Text kopieren und in die KI
+ * einfügen. Anders als showResult() wird die Zuordnungstabelle dabei NICHT
+ * ersetzt – Bild-/PDF-Funde werden ja über mergeMappings() ergänzt.
+ */
+function showExtractedText(text) {
+    if (!text || !text.trim()) {
+        return;
+    }
+    $('outputText').value = text;
+    $('outputSection').classList.remove('hidden');
+    saveSession();
+}
+
 // ---- Bild-Anonymisierung (OCR) --------------------------------------------
 
 let redactedCanvas = null;
@@ -793,6 +808,8 @@ async function runImageRedaction() {
 
         // Funde in die gemeinsame Tabelle übernehmen → Export/Import + Rückübersetzung.
         mergeMappings(plan.mappings);
+        // Den erkannten Text mit Platzhaltern anzeigen – das ist, was man in die KI einfügt.
+        showExtractedText(plan.anonymizedText);
 
         const preview = $('imageCanvas');
         preview.width = redactedCanvas.width;
@@ -893,6 +910,8 @@ async function runPdfRedaction() {
         redactedPdfBlob = result.blob;
         // Funde in die gemeinsame Tabelle übernehmen → Export/Import + Rückübersetzung.
         mergeMappings(result.mappings);
+        // Den erkannten Text mit Platzhaltern anzeigen – das ist, was man in die KI einfügt.
+        showExtractedText(result.anonymizedText);
         $('pdfProgressWrap').classList.add('hidden');
         $('pdfStatus').textContent = result.mappings.length > 0
             ? format(s.pdfDone, result.pageCount, result.mappings.length)

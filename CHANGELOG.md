@@ -9,6 +9,23 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-07-29
+
+### Added
+- **Erkannter Text aus Bild/PDF erscheint jetzt im Ausgabefeld** – mit
+  Platzhaltern und kopierfertig. Genau das fügt man in die KI ein; bisher gab es
+  nur die Bild-/PDF-Datei zurück, der Text blieb ungenutzt. Damit ist der
+  Ablauf rund: Datei rein → **Datei mit Platzhaltern + Text mit Platzhaltern**
+  → in die KI → Antwort zurückübersetzen. Die Zuordnungstabelle wird dabei
+  ergänzt, nicht überschrieben.
+
+### Performance
+- **Weniger Speicherverbrauch bei langen PDFs.** Gerenderte Seiten und die
+  PDF.js-Ressourcen werden nach jeder Seite freigegeben (`page.cleanup()`,
+  Canvas-Freigabe, `doc.destroy()`). Vorher summierten sich alle Seiten im
+  Arbeitsspeicher, was bei umfangreichen Dokumenten das Popup abstürzen lassen
+  konnte.
+
 ## [1.9.1] - 2026-07-29
 
 ### Fixed
@@ -264,7 +281,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.2
 [1.9.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.1
 [1.9.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.0
 [1.8.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.2

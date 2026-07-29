@@ -271,8 +271,21 @@ export async function redactPdf(file, options, langs = 'deu+eng', onProgress = n
                 }
             }
         }
+        // Speicher der Seite wieder freigeben. Ohne das summieren sich bei
+        // langen Dokumenten die gerenderten Seiten im Arbeitsspeicher, bis das
+        // Popup abstürzt – die fertigen JPEG-Bytes haben wir ja schon.
+        canvas.width = 0;
+        canvas.height = 0;
+        out.width = 0;
+        out.height = 0;
+        page.cleanup?.();
+
         onProgress?.(Math.round((i / doc.numPages) * 100));
     }
+
+    // Auch das Dokument selbst freigeben.
+    doc.cleanup?.();
+    doc.destroy?.();
 
     const pdfBytes = imagesToPdf(pages);
     return {
