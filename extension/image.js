@@ -9,6 +9,20 @@
 import { anonymize } from './engine.js';
 
 /**
+ * Stehen zwei Wörter auf derselben Zeile? Beurteilt über die senkrechte
+ * Überlappung der Kästchen (robust gegen leicht unterschiedliche Höhen von
+ * Gross-/Kleinbuchstaben). Reine Funktion.
+ */
+export function sameLine(a, b) {
+    if (!a || !b) {
+        return true;               // Ohne Position lieber wie bisher trennen (Leerzeichen).
+    }
+    const overlap = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+    const smaller = Math.max(1, Math.min(a.y1 - a.y0, b.y1 - b.y0));
+    return overlap / smaller > 0.4;
+}
+
+/**
  * Bestimmt aus OCR-Wörtern (mit Position) die zu ersetzenden Kästchen.
  * Jedes Kästchen trägt den zugehörigen Platzhalter ([NAME_1] …), damit er
  * wahlweise ins Bild geschrieben (statt nur geschwärzt) werden kann.
@@ -19,70 +33,105 @@ import { anonymize } from './engine.js';
  * @returns {{boxes:{x0,y0,x1,y1,category,placeholder}[], mappings:object[], text:string, anonymizedText:string}}
  */
 export function planImageRedaction(words, options, llmFindings = null) {
-    // 1. Text aus den Wörtern zusammensetzen und Zeichen-Positionen je Wort merken.
-    let text = '';
-    const spans = [];
+    // 1. Wörter zu Zeilen gruppieren. Die Erkennung läuft dann ZEILENWEISE –
+    //    sonst würde ein Muster über das Zeilenende hinaus greifen (aus
+    //    "Frau Anna Meier" + nächster Zeile "Kunde: ..." würde sonst
+    //    fälschlich der Name "Anna Meier Kunde").
+    const lines = [];
     words.forEach((w, i) => {
-        if (i > 0) {
-            text += ' ';
+        const last = lines[lines.length - 1];
+        if (last && sameLine(words[last[last.length - 1]].bbox, w.bbox)) {
+            last.push(i);
+        } else {
+            lines.push([i]);
         }
-        const start = text.length;
-        text += w.text ?? '';
-        spans.push({ start, end: text.length, index: i });
     });
 
-    // 2. Dieselbe Erkennung wie beim Text anwenden.
-    const result = anonymize(text, options, llmFindings);
-
-    // 3. Zeichen-Bereiche der gefundenen Werte im Text sammeln (mit Platzhalter).
-    const ranges = [];
-    for (const m of result.mappings) {
-        const needle = m.original;
-        if (!needle) {
-            continue;
-        }
-        let idx = 0;
-        while ((idx = text.indexOf(needle, idx)) >= 0) {
-            ranges.push({ start: idx, end: idx + needle.length, category: m.category, placeholder: m.placeholder });
-            idx += needle.length;
-        }
-    }
-
-    // 4. Jedes Wort, das einen Treffer-Bereich überlappt, wird ersetzt.
-    //    Zusammenhängende Wörter desselben Treffers (z.B. "Max" + "Muster")
-    //    werden zu EINEM Kästchen verschmolzen, damit der Platzhalter einmal
-    //    (statt pro Wort) im Bild steht.
-    const hits = [];
-    for (const sp of spans) {
-        const hit = ranges.find(r => sp.start < r.end && r.start < sp.end);
-        if (hit && words[sp.index].bbox) {
-            hits.push({ box: words[sp.index].bbox, range: hit });
-        }
-    }
-
     const boxes = [];
-    for (const h of hits) {
-        const last = boxes[boxes.length - 1];
-        // Gleicher Treffer wie beim Vorgänger und auf derselben Zeile → zusammenfassen.
-        if (last && last._range === h.range && Math.abs(last.y0 - h.box.y0) <= Math.max(4, (h.box.y1 - h.box.y0) * 0.5)) {
-            last.x0 = Math.min(last.x0, h.box.x0);
-            last.y0 = Math.min(last.y0, h.box.y0);
-            last.x1 = Math.max(last.x1, h.box.x1);
-            last.y1 = Math.max(last.y1, h.box.y1);
-            continue;
-        }
-        boxes.push({
-            x0: h.box.x0, y0: h.box.y0, x1: h.box.x1, y1: h.box.y1,
-            category: h.range.category,
-            placeholder: h.range.placeholder,
-            _range: h.range
+    const mappings = [];
+    const known = new Set();
+    const textLines = [];
+    const anonLines = [];
+
+    for (const line of lines) {
+        // 2. Text dieser Zeile zusammensetzen, Zeichen-Positionen je Wort merken.
+        let text = '';
+        const spans = [];
+        line.forEach((wi, k) => {
+            if (k > 0) {
+                text += ' ';
+            }
+            const start = text.length;
+            text += words[wi].text ?? '';
+            spans.push({ start, end: text.length, index: wi });
         });
+
+        // 3. Dieselbe Erkennung wie beim Text – mit fortlaufender Zuordnung,
+        //    damit derselbe Wert über Zeilen (und Seiten) denselben Platzhalter hat.
+        const result = anonymize(text, {
+            ...options,
+            existingMappings: [...(options.existingMappings ?? []), ...mappings]
+        }, llmFindings);
+        textLines.push(text);
+        anonLines.push(result.anonymizedText);
+
+        for (const m of result.mappings) {
+            if (!known.has(m.placeholder)) {
+                known.add(m.placeholder);
+                mappings.push(m);
+            }
+        }
+
+        // 4. Zeichen-Bereiche der gefundenen Werte (mit Platzhalter).
+        const ranges = [];
+        for (const m of result.mappings) {
+            const needle = m.original;
+            if (!needle) {
+                continue;
+            }
+            let idx = 0;
+            while ((idx = text.indexOf(needle, idx)) >= 0) {
+                ranges.push({ start: idx, end: idx + needle.length, category: m.category, placeholder: m.placeholder });
+                idx += needle.length;
+            }
+        }
+
+        // 5. Jedes Wort, das einen Treffer überlappt, wird ersetzt. Zusammen-
+        //    hängende Wörter desselben Treffers (Vor- + Nachname) ergeben EIN
+        //    Kästchen, damit der Platzhalter einmal statt doppelt dasteht.
+        let current = null;
+        for (const sp of spans) {
+            const hit = ranges.find(r => sp.start < r.end && r.start < sp.end);
+            const bbox = words[sp.index].bbox;
+            if (!hit || !bbox) {
+                current = null;
+                continue;
+            }
+            if (current && current._range === hit) {
+                current.x0 = Math.min(current.x0, bbox.x0);
+                current.y0 = Math.min(current.y0, bbox.y0);
+                current.x1 = Math.max(current.x1, bbox.x1);
+                current.y1 = Math.max(current.y1, bbox.y1);
+                continue;
+            }
+            current = {
+                x0: bbox.x0, y0: bbox.y0, x1: bbox.x1, y1: bbox.y1,
+                category: hit.category, placeholder: hit.placeholder, _range: hit
+            };
+            boxes.push(current);
+        }
     }
+
     for (const b of boxes) {
         delete b._range;
     }
 
-    return { boxes, mappings: result.mappings, text, anonymizedText: result.anonymizedText };
+    return {
+        boxes,
+        mappings,
+        text: textLines.join('\n'),
+        anonymizedText: anonLines.join('\n')
+    };
 }
 
 /**

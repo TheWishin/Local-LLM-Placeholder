@@ -9,6 +9,20 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-07-29
+
+### Fixed
+- **Originaltext blieb unter dem Platzhalter/Balken teilweise sichtbar (PDF).**
+  Unterlängen (p, g, y, @) reichen unter die Grundlinie und wurden vom Kästchen
+  nicht mehr erfasst – am unteren Rand blieb ein Rest des Originals lesbar.
+  Das Kästchen deckt jetzt auch die Unterlängen ab. Betraf Platzhalter- **und**
+  Schwärzen-Modus, also ein echtes Datenleck.
+- **Erkennung lief über das Zeilenende hinweg.** Bild- und PDF-Text wurde als ein
+  einziger Block behandelt; dadurch konnte ein Muster über den Zeilenumbruch
+  greifen (aus „Frau Anna Meier" + nächster Zeile „Kunde: …" wurde fälschlich der
+  Name „Anna Meier Kunde"). Die Erkennung arbeitet jetzt zeilenweise – die
+  fortlaufende Zuordnung über Zeilen und Seiten bleibt dabei erhalten.
+
 ## [1.9.0] - 2026-07-29
 
 ### Added
@@ -250,7 +264,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.1
 [1.9.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.0
 [1.8.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.2
 [1.8.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.8.1

@@ -34,7 +34,9 @@ check('pdfItemsToWords: Text übernommen', w0.text === 'Max');
 check('pdfItemsToWords: x0 korrekt', approx(w0.bbox.x0, 20));
 check('pdfItemsToWords: Breite skaliert (x1)', approx(w0.bbox.x1, 80));
 check('pdfItemsToWords: Oberkante y0 = Grundlinie - Höhe', approx(w0.bbox.y0, 76));
-check('pdfItemsToWords: Unterkante y1 = Grundlinie', approx(w0.bbox.y1, 100));
+// Unterkante liegt UNTER der Grundlinie, damit Unterlaengen (p, g, @) mit
+// ueberdeckt werden – sonst bliebe der Originaltext unten sichtbar.
+check('pdfItemsToWords: Unterkante deckt Unterlaengen ab', w0.bbox.y1 > 100 && w0.bbox.y1 <= 100 + 24 * 0.35);
 
 // --- imagesToPdf ---
 const jpegA = new Uint8Array([0xFF, 0xD8, 0xFF, 0xAA, 0xBB, 0xFF, 0xD9]);
