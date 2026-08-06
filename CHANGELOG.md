@@ -9,6 +9,24 @@ detection logic and are versioned together.
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-08-06
+
+### Fixed (Windows)
+- **App startete nicht mehr, wenn Port 5100 belegt war** – sie brach mit einer
+  Exception ab (`Failed to bind to address … address already in use`). Das
+  passierte typischerweise, wenn die App bereits lief und man
+  `Install-Windows.bat` ein zweites Mal anklickte (genau so steht es in der
+  Anleitung). Jetzt weicht die App automatisch auf den nächsten freien Port aus
+  und sagt es im Fenster; der Browser wird mit der richtigen Adresse geöffnet.
+- **Fehlermeldungen waren nicht lesbar.** Bei einem Startfehler blitzte nur kurz
+  ein Stapelspeicher-Auszug auf, dann schloss sich das Fenster. Jetzt erscheint
+  eine verständliche Meldung, das Fenster bleibt offen, und die Einzelheiten
+  landen in `DataAnonymizer-error.log` neben dem Programm.
+- **Fehler im Windows-Starter (`Install-Windows.bat`).** In Klammer-Blöcken wurde
+  `%errorlevel%` bereits beim Einlesen des Blocks ersetzt und enthielt damit den
+  Wert der *vorherigen* Prüfung – die winget-Erkennung schlug dadurch in den
+  falschen Zweig um. Ersetzt durch `if errorlevel`, das zur Laufzeit auswertet.
+
 ## [1.9.2] - 2026-07-29
 
 ### Added
@@ -281,7 +299,8 @@ Initial release.
 - GitHub Actions build/test and release automation producing self-contained
   Windows/Linux/macOS packages and the browser-extension ZIP.
 
-[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.2...HEAD
+[Unreleased]: https://github.com/TheWishin/Local-LLM-Placeholder/compare/v1.9.3...HEAD
+[1.9.3]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.3
 [1.9.2]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.2
 [1.9.1]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.1
 [1.9.0]: https://github.com/TheWishin/Local-LLM-Placeholder/releases/tag/v1.9.0
